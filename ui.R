@@ -8,6 +8,7 @@ library(DT)
 
 
 
+
 shinyUI(
   dashboardPage(skin = "green",
     dashboardHeader(title = "Econometric modeling", titleWidth = 500),
@@ -22,7 +23,7 @@ shinyUI(
                  menuSubItem(radioButtons("sep", "Separator",
                                           choices = c("Comma" = ",", "Tab" = "\t", "Space" = " ", "Semicolon" = ";"))),
                  menuSubItem(radioButtons("nas", "Handle missing values", 
-                                          choices = c("Omit rows with NAs", "Replace with mean", "Replace with median"))),
+                                          choices = c("Omit rows with NAs" = "omit_rows","Replace with mean" = "rep_mean_mode", "Replace with median" = "rep_median_mode"))),
                  menuSubItem(checkboxInput("header", "Header", value = TRUE))),
         
         menuItem("Data", tabName = "data", icon = icon("database"),
@@ -37,15 +38,7 @@ shinyUI(
         
 
       )
-      
-      
-      
-      
     ),
-    
-    
-    
-    
     dashboardBody(
       tabItems(
 
@@ -59,35 +52,26 @@ shinyUI(
         tabItem(tabName = "viz",
                 fluidRow(
                   
-                  box(title = "Histogram", uiOutput("inputwidget"), 
-                      sliderInput("bins", "Select number of bins", min = 10, max = 60, value = 20),
+                  box(title = "Histogram", uiOutput("inputwidget_hist"), 
+                      sliderInput("bins", "Select number of bins", min = 5, max = 20, value = 8),
                             plotOutput("histogram", height = 250)),
                   
-                  box(title = "Line chart",uiOutput("inputwidget1")),
+                  box(title = "Line chart",uiOutput("inputwidget1_line")),
                   
-                  box(title = "Scatterplot",uiOutput("inputwidget2"))
+                  box(title = "Scatterplot",uiOutput("inputwidget2_scatter"))
                  
                   
                   
                 )),
         
-        tabItem(tabName = "about", tableOutput("contents"))
-        
-        
-        
-        
-        
-        
+        tabItem(tabName = "about", tableOutput("contents")
         
       )
-      
-      
-      
-      
     )
     
     
     
     
   ) #dashboardPage
-) #shinyUI
+ )
+)#shinyUI

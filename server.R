@@ -11,6 +11,7 @@ library(DT)
 
 
 
+
 shinyServer(function(input, output, session){
   
   #####################################################################REACTIVE FUNCTIONS FILE HANDLING
@@ -37,12 +38,28 @@ shinyServer(function(input, output, session){
       }
   })
   
-  columns <- reactive({
-    names(data())
+  data1 <- reactive({
+    handleMissing(data(), input$nas)
+  })
+  
+  columns_all <- reactive({
+    names(data1())
+  })
+  
+  columns_numerical <- reactive({
+    names(getNumeric(data1()))
+  })
+  
+  columns_character <- reactive({
+    names(getCharacter(data1()))
   })
   
   output$contents <- renderTable({
-    data()
+    data1()
+  })
+  
+  output$nObs <- reactive({
+    nrow(data1())
   })
   
   ##################################################################### REACTIVE FUNCTIONS FILE HANDLING
@@ -54,34 +71,34 @@ shinyServer(function(input, output, session){
   ##################################################################### DATA MENU OUTPUT - summary, spreadsheet, viz
   
   output$table <- renderDataTable({
-    if(is.null(data())){return()}
-    data()
+    if(is.null(data1())){return()}
+    data1()
   })
   
   
   output$struct <- renderPrint({
-    if(is.null(data())){return()}
-    summary(data())
+    if(is.null(data1())){return()}
+    summary(data1())
   })
   
   ################################################# VISUALIZATION PLOTS
   
   
-  output$inputwidget <- renderUI({
-    selectInput("col", "Select the column", choices = columns())
+  output$inputwidget_hist <- renderUI({
+    selectInput("col", "Select the column", choices = columns_numerical())
   })
   
-  output$inputwidget1 <- renderUI({
-    selectInput("cols1", "Select up to 3 variables", choices = columns(), multiple = TRUE)
+  output$inputwidget1_line <- renderUI({
+    selectizeInput("cols1", "Select up to 3 variables", choices = columns_numerical(), multiple = TRUE, options = list(maxItems = 3))
   })
   
-  output$inputwidget2 <- renderUI({
-    selectInput("cols2", "Select multiple variables", choices = columns(), multiple = TRUE)
+  output$inputwidget2_scatter <- renderUI({
+    selectizeInput("cols2", "Select multiple variables", choices = columns_numerical(), multiple = TRUE)
   })
     
   
   output$histogram <- renderPlot({
-    ggplot(data(), aes(x=unlist(data()[,input$col]))) + geom_histogram(bins = input$bins)
+    ggplot(data1(), aes(x=unlist(data1()[,input$col]))) + geom_histogram(color = "green", alpha = 0.5,bins = input$bins) + xlab(input$col)
   })
   
   
