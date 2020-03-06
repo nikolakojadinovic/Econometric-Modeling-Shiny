@@ -4,6 +4,7 @@ library(ggplot2)
 library(plotly)
 library(rsconnect)
 library(DT)
+library(reshape2)
 
 
 
@@ -54,19 +55,17 @@ shinyUI(
                   
                   box(title = "Histogram", uiOutput("inputwidget_hist"), 
                       sliderInput("bins", "Select number of bins", min = 5, max = 20, value = 8),
-                            plotOutput("histogram", height = 250)),
+                            plotOutput("histogram", height = 150, width = 200)),
                   
-                  box(title = "Line chart",uiOutput("inputwidget1_line")),
+                  box(title = "Line chart",uiOutput("inputwidget1_line"), plotOutput("linechart", height = 350, width = 450)),
                   
-                  box(title = "Scatterplot",uiOutput("inputwidget2_scatter"))
+                  box(title = "Scatterplot",uiOutput("inputwidget2_scatter"), plotOutput("scatterplot", height = 350, width = 450))
                  
                   
                   
                 )),
         
-        tabItem(tabName = "about", tableOutput("contents")
-        
-      )
+        tabItem(tabName = "about", tableOutput("test_plot"))
     )
     
     

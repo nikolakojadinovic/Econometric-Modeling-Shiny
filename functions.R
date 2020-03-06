@@ -1,6 +1,7 @@
 library(shiny)
 library(shinydashboard)
 library(DT)
+library(reshape2)
 
 
 
@@ -13,14 +14,14 @@ getmode <- function(v) {
 
 
 #Used for testing the function locally
-# test_NA_df <- data.frame(
-#   prva = c(1,6,3,7,NA,9),
-#   druga = c("kat1", "kat2", "kat2", NA, "kat3","kat2"),
-#   treca = c(1.67,8.90, NA, NA, 2.34, 8.76),
-#   allNAS = c(NA, NA, NA, NA, NA, NA)
-#   
-#   
-# )
+test_NA_df <- data.frame(
+  prva = c(1,6,3,7,NA,9),
+  druga = c("kat1", "kat2", "kat2", NA, "kat3","kat2"),
+  treca = c(1.67,8.90, NA, NA, 2.34, 8.76),
+  allNAS = c(NA, NA, NA, NA, NA, NA)
+
+
+)
 
 
 
@@ -102,8 +103,22 @@ getCharacter <- function(dataset){
   return(dataset[,!nums])
 }
 
-plotlyLine <- function(dataset){
+
+setIDCol <- function(dataset){
+  nRows <- seq(1:nrow(dataset))
+  to_return <- (cbind(nRows,dataset))
+  colnames(to_return) <- c("ID", colnames(dataset))
+  return(to_return)
   
+}
+
+plotLineDfFormatter <- function(dataset, str_cols_arr){
+  tmp1 <- dataset[,str_cols_arr]
+  tmp2 <- setIDCol(tmp1)
+  to_plot <- reshape2::melt(tmp2, id = "ID")
+  
+  
+  return(to_plot)
 }
 
 
