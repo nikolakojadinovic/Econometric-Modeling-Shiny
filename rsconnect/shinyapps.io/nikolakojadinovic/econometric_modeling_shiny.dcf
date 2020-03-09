@@ -5,6 +5,6 @@ account: nikolakojadinovic
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 1874231
-bundleId: 2853701
+bundleId: 2857337
 url: https://nikolakojadinovic.shinyapps.io/econometric_modeling_shiny/
-when: 1583413945.92887
+when: 1583505323.8497

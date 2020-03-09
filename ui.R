@@ -55,7 +55,7 @@ shinyUI(
                   
                   box(title = "Histogram", uiOutput("inputwidget_hist"), 
                       sliderInput("bins", "Select number of bins", min = 5, max = 20, value = 8),
-                            plotOutput("histogram", height = 150, width = 200)),
+                            plotOutput("histogram", height = 350, width = 500)),
                   
                   box(title = "Line chart",uiOutput("inputwidget1_line"), plotOutput("linechart", height = 350, width = 450)),
                   
@@ -63,6 +63,20 @@ shinyUI(
                  
                   
                   
+                )),
+       
+         tabItem(tabName = "preprocess",
+                fluidRow(
+                  tabBox(id = "trans",
+                         tabPanel("LOGIT", uiOutput("input_logit")),
+                         tabPanel("1st difference", uiOutput("input_1diff")),
+                         tabPanel("2nd difference", uiOutput("input_2diff")),
+                         tabPanel("Standardize (z-score)", uiOutput("input_zscore")),
+                         tabPanel("Natural logarithm", uiOutput("input_log")),
+                         submitButton("Apply!")
+                  
+                ),
+                box(title = "Results", tableOutput("transformed"))
                 )),
         
         tabItem(tabName = "about", tableOutput("test_plot"))
@@ -73,4 +87,5 @@ shinyUI(
     
   ) #dashboardPage
  )
+
 )#shinyUI
