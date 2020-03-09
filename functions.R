@@ -129,23 +129,23 @@ transformData <- function(var, transformation){
   if (transformation == "logit") {
     return(as.double(lapply(var, function(x) (1-x)/x)))
   } else if (transformation == "zscore") {
-    return(as.double(lapply(var, function(x) (x - mean(var))/sd(var))))   
+    return(as.double(lapply(var, function(x) (x - mean(var))/sd(var))))
   } else if (transformation == "ln"){
     return(as.double(lapply(var, function(x) log(x))))
   }
-  
+
 }
 
 transformDataset  <- function(dataset, transformation){
-  
-    
+
+
     final <- cbind()
-    
+
     dataset1 <- data.frame(dataset)
-    
+
     for (j in 1: ncol(dataset1)) {
-      
-      
+
+
       current_col <- transformData(dataset1[,j], transformation)
       final <- cbind(final, current_col)
 
@@ -156,29 +156,29 @@ transformDataset  <- function(dataset, transformation){
 differenceData <- function(var, l, order){
   #function to perform data differencing for a given lag and order
   zeros <- c(rep(0, l))
-  
+
   if (order == 0) {
     return (var)
   } else if (order == 1) {
-    
+
     return(c(zeros,diff(var,lag = l, differences = order)))
-  } else if (order == 2) {order()
+  } else if (order == 2) {
     return(c(zeros,diff(var,lag = l, differences = order)))
   }
 }
 
 differenceDataset <- function(dataset, l, order){
-  
+
   final <- cbind()
   dataset1 <- data.frame(dataset)
-  
-  
+
+
   for (j in 1:ncol(dataset1)) {
     current_col <- differenceData(dataset1[,j],l, order = order)
     final <- cbind(final, current_col)
   }
   return(final)
-  
+
 }
 
 test1col <- data.frame(col1 = c(seq(1:10)))

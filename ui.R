@@ -64,21 +64,23 @@ shinyUI(
                   
                   
                 )),
-       
-         tabItem(tabName = "preprocess",
+        tabItem(tabName = "preprocess",
                 fluidRow(
                   tabBox(id = "trans",
-                         tabPanel("LOGIT", uiOutput("input_logit")),
-                         tabPanel("1st difference", uiOutput("input_1diff")),
-                         tabPanel("2nd difference", uiOutput("input_2diff")),
-                         tabPanel("Standardize (z-score)", uiOutput("input_zscore")),
-                         tabPanel("Natural logarithm", uiOutput("input_log")),
-                         submitButton("Apply!")
+                      tabPanel("LOGIT", uiOutput("input_logit")),
+                      tabPanel("1st difference", uiOutput("input_1diff")),
+                      tabPanel("2nd difference", uiOutput("input_2diff")),
+                      tabPanel("Standardize (z-score)", uiOutput("input_zscore")),
+                      tabPanel("Natural logarithm", uiOutput("input_log"))
+                      
+                      
+                      ),
+                
                   
-                ),
-                box(title = "Results", tableOutput("transformed"))
-                )),
-        
+         
+         box(title = "Results", tableOutput("transformed"))
+         )),
+
         tabItem(tabName = "about", tableOutput("test_plot"))
     )
     
