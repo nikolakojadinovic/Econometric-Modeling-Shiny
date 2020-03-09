@@ -5,6 +5,7 @@ library(plotly)
 library(rsconnect)
 library(DT)
 library(reshape2)
+library(urca)
 
 
 
@@ -34,10 +35,16 @@ shinyUI(
         
         menuItem("Data preprocessing", tabName = "preprocess", icon = icon("desktop")),
         
-        menuItem("About", tabName = "about", icon = icon("clipboard"))
+        menuItem("Data Modeling", tabName = "models", icon = icon("sitemap"),
+                 menuSubItem("Unit Root Test", tabName = "unit"),
+                 menuSubItem("OLS Linear Regression", tabName = "linreg"),
+                 menuSubItem("SUR Models", tabName = "sur" ),
+                 menuSubItem("Monte Carlo Simulation", tabName = "mc" )),
+        
+        menuItem("About", tabName = "about",icon = icon("clipboard"))
         
         
-
+        
       )
     ),
     dashboardBody(
@@ -80,6 +87,8 @@ shinyUI(
          
          box(title = "Results", tableOutput("transformed"))
          )),
+        
+        
 
         tabItem(tabName = "about", tableOutput("test_plot"))
     )

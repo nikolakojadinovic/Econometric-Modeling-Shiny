@@ -2,6 +2,7 @@ library(shiny)
 library(shinydashboard)
 library(DT)
 library(reshape2)
+library(urca)
 
 
 
@@ -13,7 +14,7 @@ getmode <- function(v) {
 }
 
 
-#Used for testing the function locally
+#Used for testing functions locally
 test_NA_df <- data.frame(
   prva = c(1,6,3,7,NA,9),
   druga = c("kat1", "kat2", "kat2", NA, "kat3","kat2"),
@@ -23,6 +24,7 @@ test_NA_df <- data.frame(
 
 )
 
+test1col <- data.frame(col1 = c(seq(1:10)))
 
 
 #Function to handle the missing values in uploaded dataset.
@@ -125,7 +127,7 @@ plotLineDfFormatter <- function(dataset, str_cols_arr){
 }
 
 transformData <- function(var, transformation){
-  #Function for logit transformation, zscore standardization and natural logarithm
+  #Function for  transforming individual columns with logit transformation, zscore standardization and natural logarithm
   if (transformation == "logit") {
     return(as.double(lapply(var, function(x) (1-x)/x)))
   } else if (transformation == "zscore") {
@@ -138,7 +140,7 @@ transformData <- function(var, transformation){
 
 transformDataset  <- function(dataset, transformation){
 
-
+    #Function to transform the enitre dataset (using previous)
     final <- cbind()
 
     dataset1 <- data.frame(dataset)
@@ -181,6 +183,6 @@ differenceDataset <- function(dataset, l, order){
 
 }
 
-test1col <- data.frame(col1 = c(seq(1:10)))
+
 
 
