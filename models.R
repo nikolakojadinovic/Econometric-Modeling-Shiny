@@ -11,7 +11,7 @@ library(urca)
 phillips_perron_test <- function(data, kind){
   
   #Performing PP Unit Root test for types drift and trend
-  
+  data = data.frame(data)
   if (kind == "drift") {
     pp_test_results <- c()
     for (i in 1:ncol(data)) {
@@ -40,7 +40,7 @@ phillips_perron_test <- function(data, kind){
 adf_test <- function(data, kind){
   
   #Performing ADF Unit Root test for types none drift and trend
-  
+  data = data.frame(data)
   
   if (kind == "none") {
     adf_test_results <-c()
@@ -150,3 +150,6 @@ generate_output_table <- function(data, test){
     
   }
 }
+
+
+

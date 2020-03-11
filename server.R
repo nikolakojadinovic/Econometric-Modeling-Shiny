@@ -161,9 +161,9 @@ output$input_zscore <- renderUI({
 output$input_log <- renderUI({
   selectInput("cols_ln", "Select variables for this transformation", choices = c("None", columns_numerical()), multiple = TRUE)
 })
-# 
-# 
-# 
+
+
+
 logit_cols <- reactive({
   
   if ("None" %in% input$cols_logit) {
@@ -245,27 +245,25 @@ diff2_cols <- reactive({
 })
 
 
+transformed_data <- reactive({
+  cbind(logit_cols(), z_cols(), ln_cols(), diff1_cols(), diff2_cols())
+})
 
+old_and_transformed <- reactive({
+  if ((is.null(input$cols_logit) && is.null(input$cols_zscore) && is.null(input$cols_ln) && 
+       is.null(input$cols_1diff) && is.null(input$cols_2diff)) ||
+      ("None" %in% input$cols_logit && "None" %in% input$cols_zscore && "None" %in% input$cols_ln 
+       && "None" %in% input$cols_1diff && "None" %in% input$cols_2diff))  {
+    data1()
+  } else {
+    cbind(data1(), transformed_data())
+  }
+  
+})
 
-# output$logitT <- renderTable({
-#   logit_cols()
-# })
-# 
-# output$zT <- renderTable({
-#   z_cols()
-# })
-# 
-# output$lnT <- renderTable({
-#   ln_cols()
-# })
-# 
-# output$d1T <- renderTable({
-#   diff1_cols()
-# })
-# 
-# output$d2T <- renderTable({
-#   diff2_cols()
-# })
+columns_final <- reactive({
+  colnames(old_and_transformed())
+})
 
 output$transformed <- renderTable({
   cbind(logit_cols(), z_cols(), ln_cols(), diff1_cols(), diff2_cols())
@@ -275,8 +273,47 @@ output$transformed <- renderTable({
 ##################################################################### DATA PREPROCESSING OUTPUT 
 
   
+##################################################################### DATA MODELING OUTPUT
+
+################################################# UNIT ROOT TESTS
+
+output$unit_vars <- renderUI({
+  
+  if ((is.null(input$cols_logit) && is.null(input$cols_zscore) && is.null(input$cols_ln) && 
+      is.null(input$cols_1diff) && is.null(input$cols_2diff)) ||
+      ("None" %in% input$cols_logit && "None" %in% input$cols_zscore && "None" %in% input$cols_ln 
+       && "None" %in% input$cols_1diff && "None" %in% input$cols_2diff)) {
+    selectInput("unit_vars", "Select variables for unit root tests", choices = columns_numerical(), multiple = TRUE)
+  } else {
+    selectInput("unit_vars", "Select variables for unit root tests", choices = columns_final(), multiple = TRUE)
+  }
   
   
+})
+
+# output$test_type <- renderUI({
+#   switch (input$test,
+#     "adf" = radioButtons("type", "Choose test type", choices = c("None" = "none", "Drift" = "drift", "Trend" = "trend")),
+#     "pp" = radioButtons("type", "Choose test type", choices = c("Drift" = "drift", "Trend" = "trend"))
+#   )
+# })
+
+unit_vars_df <- reactive({
+  old_and_transformed()[, req(input$unit_vars)]
+})
+
+output$unit_table <- renderTable({
+  generate_output_table(unit_vars_df(),test = req(input$test))
+})
+
+
+################################################# UNIT ROOT TESTS
+
+
+
+
+##################################################################### DATA MODELING OUTPUT
+
   
   
   

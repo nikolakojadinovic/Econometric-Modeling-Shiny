@@ -89,8 +89,20 @@ shinyUI(
          )),
         
         
+        tabItem(tabName = "unit",
+                fluidRow(
+                  box(title = h3("Unit Root Test Options"), uiOutput("unit_vars"), 
+                      radioButtons("test", "Select test", 
+                      choices = c("ADF" = "adf", "Phillips Perron" = "pp")),
+                      uiOutput("test_type")),
+                  box(title = h3("Test Results"), tableOutput("unit_table"))
+                )),
+        
+        tabItem(tabName = "about", tableOutput("proba"))
+        
+        
 
-        tabItem(tabName = "about", tableOutput("test_plot"))
+        
     )
     
     
