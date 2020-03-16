@@ -6,6 +6,7 @@ library(rsconnect)
 library(DT)
 library(reshape2)
 library(urca)
+library(systemfit)
 
 
 
@@ -162,7 +163,13 @@ output$input_log <- renderUI({
   selectInput("cols_ln", "Select variables for this transformation", choices = c("None", columns_numerical()), multiple = TRUE)
 })
 
+output$input_1lag <- renderUI({
+  selectInput("cols_1lag", "Select variables for this transformation", choices = c("None", columns_numerical()), multiple = TRUE) 
+})
 
+output$input_2lag <- renderUI({
+  selectInput("cols_2lag", "Select variables for this transformation", choices = c("None", columns_numerical()), multiple = TRUE )
+})
 
 logit_cols <- reactive({
   
@@ -244,16 +251,43 @@ diff2_cols <- reactive({
 
 })
 
+lag1_cols <- reactive({
+  if ("None" %in% input$cols_1lag) {
+    return(cbind())
+  } else {
+    to_paste <- "_1st_lag"
+    df_for_1lag <- data1()[, req(input$cols_1lag)]
+    df_1lag <- transformDataset(df_for_1lag, "1lag")
+    cols <- as.character(input$cols_1lag)
+    colnames(df_1lag) <- lapply(cols, function (x) paste(x, to_paste))
+    return(df_1lag)
+  }
+})
+
+lag2_cols <- reactive({
+  if ("None" %in% input$cols_2lag) {
+    return(cbind())
+  } else{
+    to_paste <- "_2nd_lag"
+    df_for_2lag <- data1()[, req(input$cols_2lag)]
+    df_2lag <- transformDataset(df_for_2lag, "2lag")
+    cols <- as.character(input$cols_2lag)
+    colnames(df_2lag) <- lapply(cols, function (x) paste(x, to_paste))
+    return(df_2lag)
+  }
+})
+
 
 transformed_data <- reactive({
-  cbind(logit_cols(), z_cols(), ln_cols(), diff1_cols(), diff2_cols())
+  cbind(logit_cols(), z_cols(), ln_cols(), diff1_cols(), diff2_cols(), lag1_cols(), lag2_cols())
 })
 
 old_and_transformed <- reactive({
   if ((is.null(input$cols_logit) && is.null(input$cols_zscore) && is.null(input$cols_ln) && 
-       is.null(input$cols_1diff) && is.null(input$cols_2diff)) ||
+       is.null(input$cols_1diff) && is.null(input$cols_2diff) && is.null(input$cols_1lag) && is.null(input$cols_2lag)) ||
       ("None" %in% input$cols_logit && "None" %in% input$cols_zscore && "None" %in% input$cols_ln 
-       && "None" %in% input$cols_1diff && "None" %in% input$cols_2diff))  {
+       && "None" %in% input$cols_1diff && "None" %in% input$cols_2diff 
+       && "None" %in% input$cols_1lag && "None" %in% input$cols_2lag))  {
     data1()
   } else {
     cbind(data1(), transformed_data())
@@ -266,7 +300,7 @@ columns_final <- reactive({
 })
 
 output$transformed <- renderTable({
-  cbind(logit_cols(), z_cols(), ln_cols(), diff1_cols(), diff2_cols())
+  cbind(logit_cols(), z_cols(), ln_cols(), diff1_cols(), diff2_cols(), lag1_cols(), lag2_cols())
 })
 
 
@@ -280,9 +314,10 @@ output$transformed <- renderTable({
 output$unit_vars <- renderUI({
   
   if ((is.null(input$cols_logit) && is.null(input$cols_zscore) && is.null(input$cols_ln) && 
-      is.null(input$cols_1diff) && is.null(input$cols_2diff)) ||
+       is.null(input$cols_1diff) && is.null(input$cols_2diff) && is.null(input$cols_1lag) && is.null(input$cols_2lag)) ||
       ("None" %in% input$cols_logit && "None" %in% input$cols_zscore && "None" %in% input$cols_ln 
-       && "None" %in% input$cols_1diff && "None" %in% input$cols_2diff)) {
+       && "None" %in% input$cols_1diff && "None" %in% input$cols_2diff 
+       && "None" %in% input$cols_1lag && "None" %in% input$cols_2lag)) {
     selectInput("unit_vars", "Select variables for unit root tests", choices = columns_numerical(), multiple = TRUE)
   } else {
     selectInput("unit_vars", "Select variables for unit root tests", choices = columns_final(), multiple = TRUE)
@@ -291,12 +326,6 @@ output$unit_vars <- renderUI({
   
 })
 
-# output$test_type <- renderUI({
-#   switch (input$test,
-#     "adf" = radioButtons("type", "Choose test type", choices = c("None" = "none", "Drift" = "drift", "Trend" = "trend")),
-#     "pp" = radioButtons("type", "Choose test type", choices = c("Drift" = "drift", "Trend" = "trend"))
-#   )
-# })
 
 unit_vars_df <- reactive({
   old_and_transformed()[, req(input$unit_vars)]
@@ -308,6 +337,110 @@ output$unit_table <- renderTable({
 
 
 ################################################# UNIT ROOT TESTS
+
+#################################################  SUR MODELS 
+
+
+####################### EVALUATION LOOP
+
+output$y <- renderUI({
+  
+  if ((is.null(input$cols_logit) && is.null(input$cols_zscore) && is.null(input$cols_ln) && 
+       is.null(input$cols_1diff) && is.null(input$cols_2diff) && is.null(input$cols_1lag) && is.null(input$cols_2lag)) ||
+      ("None" %in% input$cols_logit && "None" %in% input$cols_zscore && "None" %in% input$cols_ln 
+       && "None" %in% input$cols_1diff && "None" %in% input$cols_2diff 
+       && "None" %in% input$cols_1lag && "None" %in% input$cols_2lag)){
+  selectInput("dep_var", "Select dependent variable", choices = columns_numerical())
+  } else {
+    selectInput("dep_var", "Select dependent variable", choices = columns_final())
+  }
+})
+
+output$x <- renderUI({
+  if ((is.null(input$cols_logit) && is.null(input$cols_zscore) && is.null(input$cols_ln) && 
+       is.null(input$cols_1diff) && is.null(input$cols_2diff) && is.null(input$cols_1lag) && is.null(input$cols_2lag)) ||
+      ("None" %in% input$cols_logit && "None" %in% input$cols_zscore && "None" %in% input$cols_ln 
+       && "None" %in% input$cols_1diff && "None" %in% input$cols_2diff 
+       && "None" %in% input$cols_1lag && "None" %in% input$cols_2lag)){
+  selectInput("ind_vars", "Select independent variables", choices = columns_numerical(), multiple = TRUE)
+  } else {
+    selectInput("ind_vars", "Select independent variables", choices = columns_final(), multiple = TRUE)
+  }
+})
+
+
+
+
+#construction of variables - dependent
+dep <- reactive({
+  old_and_transformed()[,req(input$dep_var)]
+})
+
+l1_dep <- reactive({
+  lagSeries(unlist(dep()),1)
+})
+
+l2_dep <- reactive({
+  lagSeries(unlist(dep()),2)
+})
+
+dep_df <- reactive({
+  cbind(dep(), l1_dep(), l2_dep())
+})
+
+dep_final_df <- reactive({
+  constructLaggedDf(data.frame(deps_df()))  
+})
+
+
+#construction of variables  - independents
+indeps_df <- reactive({
+  old_and_transformed()[,req(input$ind_vars)]
+})
+
+indeps_final_df <- reactive({
+  constructLaggedDf(data.frame(indeps_df()))
+})
+
+
+#construtcion of equations and model estimation
+
+mainEquation <- reactive({
+  dep() ~ indeps_df()
+})
+
+system <- reactive({
+  getSystem(Y = dep(), Xset = indeps_df())
+})
+
+model <- reactive({
+ systemfit(system(), method = "SUR")
+})
+
+#test SUR
+
+output$test <- renderText({
+  ncol(indeps_df())
+})
+
+output$sur <- renderText({
+  model()
+})
+
+
+# system <- reactive({
+#   list(mainEquation() = mainEquation())
+# })
+# output$model <- renderText({
+#   systemfit(system(), method = "OLS")
+# })
+
+
+####################### EVALUATION LOOP
+
+
+
+#################################################  SUR MODELS 
 
 
 

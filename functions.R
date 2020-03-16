@@ -3,6 +3,7 @@ library(shinydashboard)
 library(DT)
 library(reshape2)
 library(urca)
+library(systemfit)
 
 
 
@@ -126,6 +127,24 @@ plotLineDfFormatter <- function(dataset, str_cols_arr){
   return(to_plot)
 }
 
+
+lagSeries <- function(var, order){
+  if (order == 1) {
+    zeros = 0
+    var <- var[-order]
+    var <- c(var, zeros)
+    return (var)
+  } else {
+    zeros = rep(0, order)
+    for (i in 1:order) {
+      var <- var[-1]
+    
+    }
+    var <- c(var, zeros)
+    return(var)
+  }
+}
+
 transformData <- function(var, transformation){
   #Function for  transforming individual columns with logit transformation, zscore standardization and natural logarithm
   if (transformation == "logit") {
@@ -134,6 +153,10 @@ transformData <- function(var, transformation){
     return(as.double(lapply(var, function(x) (x - mean(var))/sd(var))))
   } else if (transformation == "ln"){
     return(as.double(lapply(var, function(x) log(x))))
+  } else if (transformation == "1lag") {
+    return(lagSeries(var, 1))
+  } else if(transformation == "2lag"){
+    return(lagSeries(var, 2))
   }
 
 }
@@ -182,7 +205,6 @@ differenceDataset <- function(dataset, l, order){
   return(final)
 
 }
-
 
 
 

@@ -3,6 +3,7 @@ library(shinydashboard)
 library(DT)
 library(reshape2)
 library(urca)
+library(systemfit)
 
 
 
@@ -150,6 +151,99 @@ generate_output_table <- function(data, test){
     
   }
 }
+
+
+constructLaggedDf <- function(dataset){
+  
+  #Constructing a dataframe of independent variables for SUR evaluation loop. 'final' consists of a dataframe with all independent
+  #variables followed by first and second lag of independent variables
+  
+  df <- data.frame(dataset)
+  if (ncol(df) == 1) {
+    return(cbind(dataset, lagSeries(dataset,1), lagSeries(dataset,2)))
+  }
+  
+  nCols <- ncol(dataset)
+  
+  final <- cbind()
+  for (i in 1:nCols) {
+     final <- cbind(final, dataset[,i], lagSeries(dataset[,i],1), lagSeries(dataset[,i],2)) 
+  }
+  return(final)
+}
+
+
+defineArEquation <- function(var){
+  
+  # final_ar_list <- c()
+  # for (j in ar_list) {
+  #   final_ar_list <- c(final_ar_list, j=j)
+  # }
+  return(unlist(var) ~ unlist(lagSeries(var,1)))
+}
+
+defineMainEquation <- function(var, indeps){
+  return(unlist(var) ~ cbind(indeps))
+}
+
+
+getSystem <- function(Y,Xset){
+  
+  
+  nCols <- ncol(Xset)
+  newX <- cbind()
+  for (k in 1:nCols) {
+    newX <- cbind(newX, unlist(Xset[,k]))
+  }
+  
+  
+  main_eq <- unlist(Y) ~ newX
+  system <- c(main_eq)
+  for (j in 1:nCols) {
+    Xt <- unlist(newX[,j])
+    Xt1 <- lagSeries(unlist(newX[,j]),1)
+    ar1 <- Xt ~ Xt1
+    system <- c(system, ar1)
+  }
+  return(lapply(system, as.formula))
+}
+
+
+# system <- getSystem(testdata[,2], testdata[,c(3,7)])
+# systemfit(system, method = "SUR")
+# 
+# me <- unlist(testdata[,2]) ~ cbind(unlist(testdata[,3]), unlist(testdata[,4]))
+# 
+# arI <- unlist(testdata[,3]) ~lagSeries(unlist(testdata[,3]),1)
+# arII <- unlist(testdata[,4]) ~ lagSeries(unlist(testdata[,4]),1)
+# 
+# system1 <- list(me, arI, arII)
+# systemfit(system, method = "SUR")
+
+
+
+#RAZBITI INDEPS DF NA TACNO ONOLIKO KOLIKO IMA PREDIKTORA
+# constructSystemList <- function(ar_formula_list){
+#   system <- c()
+#   for (formula in c(ar_formula_list)) {
+#     system <- c(system, formula)
+#   }
+#   return(system)
+# }
+
+
+
+# evaluationLoopDeps <- function(y, X){
+#   for (i in 1:ncol(y)) {
+#     main_eq <- y[,i] ~ cbind(X)
+#     ar <- defineArEquations(X)
+#     
+#   }
+# }
+# 
+# evaluationLoopIndeps <- function(){
+#   
+# }
 
 
 

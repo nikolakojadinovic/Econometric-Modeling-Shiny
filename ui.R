@@ -6,6 +6,7 @@ library(rsconnect)
 library(DT)
 library(reshape2)
 library(urca)
+library(systemfit)
 
 
 
@@ -78,7 +79,9 @@ shinyUI(
                       tabPanel("1st difference", uiOutput("input_1diff")),
                       tabPanel("2nd difference", uiOutput("input_2diff")),
                       tabPanel("Standardize (z-score)", uiOutput("input_zscore")),
-                      tabPanel("Natural logarithm", uiOutput("input_log"))
+                      tabPanel("Natural logarithm", uiOutput("input_log")),
+                      tabPanel("1st order lag", uiOutput("input_1lag")),
+                      tabPanel("2nd order lag", uiOutput("input_2lag"))
                       
                       
                       ),
@@ -98,7 +101,14 @@ shinyUI(
                   box(title = h3("Test Results"), tableOutput("unit_table"))
                 )),
         
-        tabItem(tabName = "about", tableOutput("proba"))
+        tabItem(tabName = "sur",
+                fluidRow(
+                  
+                    box(h3("Evaluation Loop Options"), uiOutput("y"), uiOutput("x")),
+                    box(h3("SUR model summary"))
+                )),
+        
+        tabItem(tabName = "about", textOutput("sur"))
         
         
 
