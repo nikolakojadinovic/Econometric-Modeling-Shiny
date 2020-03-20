@@ -208,8 +208,73 @@ getSystem <- function(Y,Xset){
   return(lapply(system, as.formula))
 }
 
+getSurCoefs <- function(sur, param){
+  eqs <- sur[[1]]
+  no_eqs <- length(eqs)
+  coefs_list <- c()
+  
+  for (i in param:no_eqs) {
+    coefs <- list(as.double(eqs[[i]]$coefficients))
+    coefs_list <- c(coefs_list, coefs)
+  }
+  
+  return(coefs_list)
+  
+}
 
-# system <- getSystem(testdata[,2], testdata[,c(3,7)])
+rep2 <- function(x, times){
+  if (times ==0) {
+    return(numeric(0))
+  }
+  else {
+    out <- c()
+    for (i in 1:times) {
+      out <- c(out, x)
+    }
+  }
+  
+  return (out)
+}
+
+out_X <- function(sur){
+  
+  
+  out <- getSurCoefs(sur,2)
+  
+  
+  
+  
+  
+  N <- length(out)
+  out1 <- list()
+  for (i in 1:N) {
+    
+    rb <- i - 1
+    between <- rep2("-",rb)
+    
+    re <- N-i
+    end <- rep2("-", re)
+    first <- out[[i]][1]
+    last <- out[[i]][2]
+    new <- c(first, between,last,end)
+    print(new)
+    out1[[i]] <- new
+    
+    
+  
+  }
+  
+  
+  return(out1)
+}
+
+getRSquared <- function(){
+  
+}
+
+
+
+# system <- getSystem(testdata[,15], testdata[,c(6,9)])
 # systemfit(system, method = "SUR")
 # 
 # me <- unlist(testdata[,2]) ~ cbind(unlist(testdata[,3]), unlist(testdata[,4]))

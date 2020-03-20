@@ -255,7 +255,7 @@ lag1_cols <- reactive({
   if ("None" %in% input$cols_1lag) {
     return(cbind())
   } else {
-    to_paste <- "_1st_lag"
+    to_paste <- "_t-1"
     df_for_1lag <- data1()[, req(input$cols_1lag)]
     df_1lag <- transformDataset(df_for_1lag, "1lag")
     cols <- as.character(input$cols_1lag)
@@ -268,7 +268,7 @@ lag2_cols <- reactive({
   if ("None" %in% input$cols_2lag) {
     return(cbind())
   } else{
-    to_paste <- "_2nd_lag"
+    to_paste <- "_t-2"
     df_for_2lag <- data1()[, req(input$cols_2lag)]
     df_2lag <- transformDataset(df_for_2lag, "2lag")
     cols <- as.character(input$cols_2lag)
@@ -417,15 +417,67 @@ model <- reactive({
  systemfit(system(), method = "SUR")
 })
 
-#test SUR
-
-output$test <- renderText({
-  ncol(indeps_df())
+coefs_all <- reactive({
+  getSurCoefs(model(),1)
 })
 
-output$sur <- renderText({
-  model()
+# coefs_X <- reactive({
+#   getSurCoefs(model(),2)
+# })
+
+
+
+coefs_dep <- reactive({
+  coefs_all()[[1]]
 })
+
+
+
+first_column_out <- reactive({
+  out <- c("Intercept")
+  for (i in as.character(input$ind_vars)) {
+    
+    out <- c(out, i)
+  }
+  out <- list(out)
+  df <- do.call(cbind.data.frame, out)
+  
+  return(df)
+})
+
+y_column <- reactive({
+  out <- c()
+  for (i in coefs_dep()) {
+    out <- c(out, i)
+  }
+  out <- list(out)
+  df <- do.call(cbind.data.frame, out)
+  
+  
+  
+  return(out)
+})
+
+
+x_columns <- reactive({
+  df <- do.call(cbind.data.frame, out_X(model()))
+  
+  df
+})
+
+sur_table_out <- reactive({
+  df <- cbind(first_column_out(), y_column(), x_columns())
+  colnames(df) <- c("Variables", input$dep_var, input$ind_vars)
+  df
+})
+
+
+output$sur_out <- renderTable({
+  input$action
+  
+  isolate(sur_table_out())
+})
+
 
 
 # system <- reactive({

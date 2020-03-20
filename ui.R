@@ -42,7 +42,8 @@ shinyUI(
                  menuSubItem("SUR Models", tabName = "sur" ),
                  menuSubItem("Monte Carlo Simulation", tabName = "mc" )),
         
-        menuItem("About", tabName = "about",icon = icon("clipboard"))
+        menuItem("About", tabName = "about",icon = icon("clipboard")),
+        menuItem("TEST", tabName = "TEST")
         
         
         
@@ -104,11 +105,15 @@ shinyUI(
         tabItem(tabName = "sur",
                 fluidRow(
                   
-                    box(h3("Evaluation Loop Options"), uiOutput("y"), uiOutput("x")),
-                    box(h3("SUR model summary"))
+                    box(h3("Evaluation Loop Options"), uiOutput("y"), uiOutput("x"), actionButton("action", "Estimate the model!")),
+          
+
+                    box(h3("SUR model summary"), 
+                        div(style = 'overflow-x: scroll', tableOutput('sur_out')))
                 )),
         
-        tabItem(tabName = "about", textOutput("sur"))
+        tabItem(tabName = "about", textOutput("test1")),
+        tabItem(tabName = "TEST")
         
         
 
