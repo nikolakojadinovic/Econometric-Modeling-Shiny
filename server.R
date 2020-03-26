@@ -72,7 +72,7 @@ shinyServer(function(input, output, session){
   
   ##################################################################### REACTIVE FUNCTIONS FILE HANDLING
   
- 
+
   
   
   
@@ -279,24 +279,34 @@ lag2_cols <- reactive({
 
 
 transformed_data <- reactive({
-  cbind(logit_cols(), z_cols(), ln_cols(), diff1_cols(), diff2_cols(), lag1_cols(), lag2_cols())
+  data.frame(cbind(logit_cols(), z_cols(), ln_cols(), diff1_cols(), diff2_cols(), lag1_cols(), lag2_cols()))
 })
 
+
+# old_and_transformed <- reactive({
+#   
+#   cbind(transformed_data(), data1())
+#   
+# })
+
+
+
+
 old_and_transformed <- reactive({
-  if ((is.null(input$cols_logit) && is.null(input$cols_zscore) && is.null(input$cols_ln) && 
+  if ((is.null(input$cols_logit) && is.null(input$cols_zscore) && is.null(input$cols_ln) &&
        is.null(input$cols_1diff) && is.null(input$cols_2diff) && is.null(input$cols_1lag) && is.null(input$cols_2lag)) ||
-      ("None" %in% input$cols_logit && "None" %in% input$cols_zscore && "None" %in% input$cols_ln 
-       && "None" %in% input$cols_1diff && "None" %in% input$cols_2diff 
+      ("None" %in% input$cols_logit && "None" %in% input$cols_zscore && "None" %in% input$cols_ln
+       && "None" %in% input$cols_1diff && "None" %in% input$cols_2diff
        && "None" %in% input$cols_1lag && "None" %in% input$cols_2lag))  {
     data1()
   } else {
     cbind(data1(), transformed_data())
   }
-  
+
 })
 
 columns_final <- reactive({
-  colnames(old_and_transformed())
+  names(old_and_transformed())
 })
 
 output$transformed <- renderTable({
@@ -341,7 +351,7 @@ output$unit_table <- renderTable({
 #################################################  SUR MODELS 
 
 
-####################### EVALUATION LOOP
+####################### GETTING USER INPUT
 
 output$y <- renderUI({
   
@@ -368,8 +378,20 @@ output$x <- renderUI({
   }
 })
 
+output$ar1 <- renderUI({
+  if ((is.null(input$cols_logit) && is.null(input$cols_zscore) && is.null(input$cols_ln) && 
+       is.null(input$cols_1diff) && is.null(input$cols_2diff) && is.null(input$cols_1lag) && is.null(input$cols_2lag)) ||
+      ("None" %in% input$cols_logit && "None" %in% input$cols_zscore && "None" %in% input$cols_ln 
+       && "None" %in% input$cols_1diff && "None" %in% input$cols_2diff 
+       && "None" %in% input$cols_1lag && "None" %in% input$cols_2lag)){
+    selectInput("ar1_vars", "Select variables for AR(1) equations", choices = columns_numerical(), multiple = TRUE)
+  } else {
+    selectInput("ar1_vars", "Select variables for AR(1) equations", choices = columns_final(), multiple = TRUE)
+  }
+})
+####################### GETTING USER INPUT
 
-
+####################### MODEL ESTIMATION
 
 #construction of variables - dependent
 dep <- reactive({
@@ -388,9 +410,6 @@ dep_df <- reactive({
   cbind(dep(), l1_dep(), l2_dep())
 })
 
-dep_final_df <- reactive({
-  constructLaggedDf(data.frame(deps_df()))  
-})
 
 
 #construction of variables  - independents
@@ -398,98 +417,107 @@ indeps_df <- reactive({
   old_and_transformed()[,req(input$ind_vars)]
 })
 
-indeps_final_df <- reactive({
-  constructLaggedDf(data.frame(indeps_df()))
+ar1_df <- reactive({
+  old_and_transformed()[,req(input$ar1_vars)]
 })
 
 
-#construtcion of equations and model estimation
+ncol_indeps <- reactive({
+  ncol(indeps_df())
+})
+
+#estimation itself
 
 mainEquation <- reactive({
   dep() ~ indeps_df()
+  
 })
 
 system <- reactive({
   getSystem(Y = dep(), Xset = indeps_df())
 })
 
+system1 <- reactive({
+  getSystem(Y = dep(), Xset = ar1_df())
+})
+
 model <- reactive({
  systemfit(system(), method = "SUR")
 })
 
+model1 <- reactive({
+  systemfit(system1(), method = "SUR")
+})
+
+
+
+
 coefs_all <- reactive({
   getSurCoefs(model(),1)
 })
-
-# coefs_X <- reactive({
-#   getSurCoefs(model(),2)
-# })
-
 
 
 coefs_dep <- reactive({
   coefs_all()[[1]]
 })
 
+coefs_indep <- reactive({
+  getSurCoefs(model(),2)
+})
+
+coefs_indep1 <- reactive({
+  getSurCoefs(model1(),2)
+})
+
+####################### MODEL ESTIMATION
+
+####################### PRINTING RESULTS ON CLIENT
 
 
-first_column_out <- reactive({
-  out <- c("Intercept")
-  for (i in as.character(input$ind_vars)) {
-    
-    out <- c(out, i)
-  }
-  out <- list(out)
-  df <- do.call(cbind.data.frame, out)
-  
+### MAIN EQUATION OUTPUT
+first_row_out <- reactive({
+ c(as.character(input$dep_var), "Intercept", as.character(input$ind_vars), "R Squared", "Durbin Watson")
+})
+
+second_row_out <- reactive({
+  c("coefs: ", sapply(coefs_dep(), round, digits = 4), round(summary(model()[[1]][[1]])$adj.r.squared, digits = 2), round(getDWstat(model()[[1]][[1]]$residuals), digits = 3))
+})
+
+third_row_out <- reactive({
+  c("p-value:", sapply(getPValues(summary(model()[[1]][[1]])$coefficients), round, digits = 4), "-", "-")
+})
+
+df_out <- reactive({
+  df <- rbind(second_row_out(), third_row_out())
+  colnames(df) <- first_row_out()
   return(df)
 })
 
-y_column <- reactive({
-  out <- c()
-  for (i in coefs_dep()) {
-    out <- c(out, i)
-  }
-  out <- list(out)
-  df <- do.call(cbind.data.frame, out)
-  
-  
-  
-  return(out)
+x_out <- reactive({
+  generate_X_out(coefs_indep1(), as.character(input$ar1_vars), model1())
 })
 
-
-x_columns <- reactive({
-  df <- do.call(cbind.data.frame, out_X(model()))
-  
-  df
-})
-
-sur_table_out <- reactive({
-  df <- cbind(first_column_out(), y_column(), x_columns())
-  colnames(df) <- c("Variables", input$dep_var, input$ind_vars)
-  df
-})
-
-
-output$sur_out <- renderTable({
+output$sur_y_out <- renderTable({
   input$action
-  
-  isolate(sur_table_out())
+
+  isolate(df_out())
 })
 
+output$sur_x_out <- renderTable({
+  input$action
+  isolate(x_out())
+})
+### MAIN EQUATION OUPUT
+
+###AR(1) OUTPUT
 
 
-# system <- reactive({
-#   list(mainEquation() = mainEquation())
-# })
-# output$model <- renderText({
-#   systemfit(system(), method = "OLS")
-# })
 
 
-####################### EVALUATION LOOP
 
+###AR(1) OUTPUT
+
+####################### PRINTING RESULTS ON CLIENT
 
 
 #################################################  SUR MODELS 

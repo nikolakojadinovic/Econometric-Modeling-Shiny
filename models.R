@@ -173,14 +173,14 @@ constructLaggedDf <- function(dataset){
 }
 
 
-defineArEquation <- function(var){
-  
-  # final_ar_list <- c()
-  # for (j in ar_list) {
-  #   final_ar_list <- c(final_ar_list, j=j)
-  # }
-  return(unlist(var) ~ unlist(lagSeries(var,1)))
-}
+# defineArEquation <- function(var){
+#   
+#   # final_ar_list <- c()
+#   # for (j in ar_list) {
+#   #   final_ar_list <- c(final_ar_list, j=j)
+#   # }
+#   return(unlist(var) ~ unlist(lagSeries(var,1)))
+# }
 
 defineMainEquation <- function(var, indeps){
   return(unlist(var) ~ cbind(indeps))
@@ -189,8 +189,11 @@ defineMainEquation <- function(var, indeps){
 
 getSystem <- function(Y,Xset){
   
-  
-  nCols <- ncol(Xset)
+  # if (ncol(Xset) == 0 || ncol(Xset) == 1 || is.null(ncol(Xset)) || is.na(ncol(Xset))) {
+  #   return (Xset)
+  # }
+  Xset <- data.frame(Xset)
+  nCols <- length(Xset)
   newX <- cbind()
   for (k in 1:nCols) {
     newX <- cbind(newX, unlist(Xset[,k]))
@@ -205,9 +208,12 @@ getSystem <- function(Y,Xset){
     ar1 <- Xt ~ Xt1
     system <- c(system, ar1)
   }
+  
   return(lapply(system, as.formula))
 }
 
+
+#BREAK OVDE! - PRIKAZIVANJE JEBE
 getSurCoefs <- function(sur, param){
   eqs <- sur[[1]]
   no_eqs <- length(eqs)
@@ -219,6 +225,16 @@ getSurCoefs <- function(sur, param){
   }
   
   return(coefs_list)
+  
+}
+
+getPValues <- function(mat_out){
+  p_column <- mat_out[,4]
+  p_vals <-c()
+  for (p in p_column) {
+    p_vals <- c(p_vals, p)
+  }
+  return(sapply(p_vals,round,4))
   
 }
 
@@ -268,47 +284,129 @@ out_X <- function(sur){
   return(out1)
 }
 
-getRSquared <- function(){
-  
-}
-
-
-
-# system <- getSystem(testdata[,15], testdata[,c(6,9)])
-# systemfit(system, method = "SUR")
-# 
-# me <- unlist(testdata[,2]) ~ cbind(unlist(testdata[,3]), unlist(testdata[,4]))
-# 
-# arI <- unlist(testdata[,3]) ~lagSeries(unlist(testdata[,3]),1)
-# arII <- unlist(testdata[,4]) ~ lagSeries(unlist(testdata[,4]),1)
-# 
-# system1 <- list(me, arI, arII)
-# systemfit(system, method = "SUR")
-
-
-
-#RAZBITI INDEPS DF NA TACNO ONOLIKO KOLIKO IMA PREDIKTORA
-# constructSystemList <- function(ar_formula_list){
-#   system <- c()
-#   for (formula in c(ar_formula_list)) {
-#     system <- c(system, formula)
+# getRSquared <- function(y, yhat){
+#   #function that returns R square coefficient od determination for a regression model
+#   
+#   if (length(y) != length(yhat)) {
+#     stop(paste("Length mismatch", "y: ", length(y), "yhat: ", length(yhat)))
 #   }
-#   return(system)
-# }
-
-
-
-# evaluationLoopDeps <- function(y, X){
-#   for (i in 1:ncol(y)) {
-#     main_eq <- y[,i] ~ cbind(X)
-#     ar <- defineArEquations(X)
+#   
+#   ybar <- mean(unlist(y))
+#   sum_up <-0
+#   sum_down <-0
+#   for (i in 1:length(y)) {
+#     up <- (y[i] - yhat[i])**2
+#     down <- (y[i] - ybar)**2
 #     
+#     sum_up <- sum_up + up
+#     sum_down <- sum_down + down
 #   }
-# }
-# 
-# evaluationLoopIndeps <- function(){
+#   
+#   return(1-(sum_up/sum_down))
 #   
 # }
+# 
+# xResidList <- function(Xset, model){
+#   
+#   
+#   out <- list()
+# 
+#   
+#   for (i in 2:length(model[[1]])) {
+#     df <- cbind(Xset[,i-1], model[[1]][[i]]$residuals)
+#     out[[i]] <- df
+#   }
+#   
+#   return(out)
+# }
+# 
+# 
+# getXRSquared <- function(lst){
+#   out <- c()
+#   for (i in 1:length(lst)) {
+#     y <- lst[[i]][,1]
+#     yhat <- lst[[i]][,2]
+# 
+#     r2 <- getRSquared(y, yhat)
+#     out <- c(out, r2)
+#   }
+#   
+#   return(out)
+# }
+
+
+
+getDWstat <- function(resid){
+  sum_up <- 0
+  for (t in 2:length(resid)) {
+    sum_up <- sum_up + (resid[t] - resid[t-1])**2
+    
+  }
+  sum_down <- 0
+  for (t in 1:length(resid)) {
+    sum_down <- sum_down + (resid[t])**2
+  }
+  res <- sum_up/sum_down
+  return(res)
+}
+
+generate_X_out <- function(coefs, var_names, model){
+  # if (length(coefs) != length(var_names)) {
+  #   stop("SJEEEEEEEB!!!!")
+  # } else {
+  
+    # coefs <- sapply(coefs, as.double)
+    # coefs <- sapply(coefs, round, digits = 4)
+    N <- length(coefs)
+    first_row_num <- c()
+    rest_rbind <- list()
+    
+    r2_list <-c("R Squared")
+    dw_list <-c("Durbin Watson")
+    
+    for (i in 1:N) {
+      first_row_num <- c(first_row_num, coefs[[i]][1])
+      between <- rep2("-",i-1)
+      end <- rep2("-",N-i)
+      rest_rbind[[i]] <- c(between, coefs[[i]][2], end)
+      
+      r2_list <- c(r2_list, round(summary(model[[1]][[i+1]])$adj.r.squared, digits = 2))
+      d2_list <- c(dw_list, round(model[[1]][[i+1]]$residuals, digits = 3))
+    }
+    
+    # r2_list <- sapply(r2_list, round, digits = 2)
+    # d2_list <- sapply(d2_list, round, digits = 3)
+    
+  
+    out <- rbind(first_row_num)
+    for (i in rest_rbind) {
+      out <- rbind(out,i)
+    }
+   
+    
+    first_column <- c("Intercept")
+    to_paste <- "_t-1"
+    for (name in var_names) {
+      val <- paste(name, to_paste)
+      first_column <- c(first_column, val)
+    }
+    out <- cbind(first_column, out)
+    out <- rbind(out,r2_list,d2_list)
+    colnames(out) <- c("Variables",var_names)
+    
+    
+    # for (r in 1:(N+1)) {
+    #   for(c in 2:(N+1)){
+    #     out[r,c] <- round(as.double(out[r,c]), digits = 4)
+    #   }
+    # }
+    
+    
+    
+    
+    return(out)
+  # }
+}
 
 
 

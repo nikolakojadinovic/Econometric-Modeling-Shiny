@@ -105,15 +105,15 @@ shinyUI(
         tabItem(tabName = "sur",
                 fluidRow(
                   
-                    box(h3("Evaluation Loop Options"), uiOutput("y"), uiOutput("x"), actionButton("action", "Estimate the model!")),
+                    box(h3("Evaluation Loop Options"), uiOutput("y"), uiOutput("x"), uiOutput("ar1"), actionButton("action", "Estimate the model!")),
           
 
                     box(h3("SUR model summary"), 
-                        div(style = 'overflow-x: scroll', tableOutput('sur_out')))
+                        div(style = 'overflow-x: scroll', tableOutput('sur_y_out'), tableOutput("sur_x_out")))
                 )),
         
         tabItem(tabName = "about", textOutput("test1")),
-        tabItem(tabName = "TEST")
+        tabItem(tabName = "TEST", textOutput("rrr"))
         
         
 
