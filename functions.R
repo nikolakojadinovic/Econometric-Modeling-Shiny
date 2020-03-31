@@ -4,6 +4,7 @@ library(DT)
 library(reshape2)
 library(urca)
 library(systemfit)
+library(nlme)
 
 
 
@@ -157,6 +158,10 @@ transformData <- function(var, transformation){
     return(lagSeries(var, 1))
   } else if(transformation == "2lag"){
     return(lagSeries(var, 2))
+  } else if(transformation == "ld1"){
+    return(differenceData(lagSeries(var,1),1,1))
+  } else if (transformation == "ld2") {
+    return(differenceData(lagSeries(var,2),1,1))
   }
 
 }

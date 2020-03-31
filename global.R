@@ -1,5 +1,7 @@
 library(shiny)
 library(shinydashboard)
+library(nlme)
 source('./functions.R')
 source('./models.R')
 # options(shiny.maxRequestSize=100*1024^2)
+options(error = function() traceback(3))

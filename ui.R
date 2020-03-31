@@ -7,13 +7,14 @@ library(DT)
 library(reshape2)
 library(urca)
 library(systemfit)
+library(nlme)
 
 
 
 
 
 shinyUI(
-  dashboardPage(skin = "green",
+  dashboardPage(skin = "blue",
     dashboardHeader(title = "Econometric modeling", titleWidth = 500),
     
     dashboardSidebar(
@@ -82,14 +83,16 @@ shinyUI(
                       tabPanel("Standardize (z-score)", uiOutput("input_zscore")),
                       tabPanel("Natural logarithm", uiOutput("input_log")),
                       tabPanel("1st order lag", uiOutput("input_1lag")),
-                      tabPanel("2nd order lag", uiOutput("input_2lag"))
-                      
+                      tabPanel("2nd order lag", uiOutput("input_2lag")),
+                      tabPanel("Diff 1st lag", uiOutput("input_ld1")),
+                      tabPanel("Diff 2nd lag", uiOutput("input_ld2"))
+
                       
                       ),
                 
                   
          
-         box(title = "Results", tableOutput("transformed"))
+         box(title = "Results", style = 'overflow-x: scroll', tableOutput("transformed"))
          )),
         
         
@@ -109,11 +112,14 @@ shinyUI(
           
 
                     box(h3("SUR model summary"), 
-                        div(style = 'overflow-x: scroll', tableOutput('sur_y_out'), tableOutput("sur_x_out")))
+                        helpText("Main equation summary"),
+                        div(style = 'overflow-x: scroll', tableOutput('sur_y_out'), 
+                            helpText("AR (1) equations summary"), 
+                            tableOutput("sur_x_out")))
                 )),
         
         tabItem(tabName = "about", textOutput("test1")),
-        tabItem(tabName = "TEST", textOutput("rrr"))
+        tabItem(tabName = "TEST", textOutput("tipcina"), tableOutput("testina"))
         
         
 

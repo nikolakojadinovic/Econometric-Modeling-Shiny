@@ -4,6 +4,7 @@ library(DT)
 library(reshape2)
 library(urca)
 library(systemfit)
+library(nlme)
 
 
 
@@ -186,6 +187,26 @@ defineMainEquation <- function(var, indeps){
   return(unlist(var) ~ cbind(indeps))
 }
 
+getSystem2 <- function(Y, Xset){
+  Xset <- data.frame(Xset)
+  nCols <- length(Xset)
+  newX <- cbind()
+  for (k in 1:nCols) {
+    newX <- cbind(newX, unlist(Xset[,k]))
+  }
+  #function that returns a list that should be a 'system' argument for systemfit
+  main <- unlist(Y) ~ newX
+  system <- c(main)
+  for (i in 1:nCols) {
+
+    system <- c(system, unlist(newX[,i]) ~ lagSeries(unlist(newX[,i]),1))
+    
+  }
+  return(system)
+}
+
+
+
 
 getSystem <- function(Y,Xset){
   
@@ -213,14 +234,14 @@ getSystem <- function(Y,Xset){
 }
 
 
-#BREAK OVDE! - PRIKAZIVANJE JEBE
+#BREAK OVDE! - PRIKAZIVANJE JEBE #summary eqs[[1]] ukloni
 getSurCoefs <- function(sur, param){
   eqs <- sur[[1]]
   no_eqs <- length(eqs)
   coefs_list <- c()
   
   for (i in param:no_eqs) {
-    coefs <- list(as.double(eqs[[i]]$coefficients))
+    coefs <- list(as.double(summary(eqs[[i]])$coefficients[,1]))
     coefs_list <- c(coefs_list, coefs)
   }
   
@@ -284,55 +305,9 @@ out_X <- function(sur){
   return(out1)
 }
 
-# getRSquared <- function(y, yhat){
-#   #function that returns R square coefficient od determination for a regression model
-#   
-#   if (length(y) != length(yhat)) {
-#     stop(paste("Length mismatch", "y: ", length(y), "yhat: ", length(yhat)))
-#   }
-#   
-#   ybar <- mean(unlist(y))
-#   sum_up <-0
-#   sum_down <-0
-#   for (i in 1:length(y)) {
-#     up <- (y[i] - yhat[i])**2
-#     down <- (y[i] - ybar)**2
-#     
-#     sum_up <- sum_up + up
-#     sum_down <- sum_down + down
-#   }
-#   
-#   return(1-(sum_up/sum_down))
-#   
-# }
-# 
-# xResidList <- function(Xset, model){
-#   
-#   
-#   out <- list()
-# 
-#   
-#   for (i in 2:length(model[[1]])) {
-#     df <- cbind(Xset[,i-1], model[[1]][[i]]$residuals)
-#     out[[i]] <- df
-#   }
-#   
-#   return(out)
-# }
-# 
-# 
-# getXRSquared <- function(lst){
-#   out <- c()
-#   for (i in 1:length(lst)) {
-#     y <- lst[[i]][,1]
-#     yhat <- lst[[i]][,2]
-# 
-#     r2 <- getRSquared(y, yhat)
-#     out <- c(out, r2)
-#   }
-#   
-#   return(out)
-# }
+
+
+
 
 
 
@@ -350,10 +325,29 @@ getDWstat <- function(resid){
   return(res)
 }
 
+getArCoefs <- function(Xset){
+  if (ncol(Xset) == 0) {
+    return()
+  } else { 
+  out <- list()
+  for (i in 1:ncol(Xset)) {
+    Xt <- Xset[,i]
+    Xt1 <- lagSeries(Xt,1)
+    intercept <- summary(lm(Xt ~ Xt1))$coefficients[1,1]
+    phi <- summary(lm(Xt ~ Xt1))$coefficients[2,1]
+    lst <- c(intercept, phi)
+    out[[i]] <- lst
+  }
+  return(out)
+  
+  }
+}
+
+
 generate_X_out <- function(coefs, var_names, model){
-  # if (length(coefs) != length(var_names)) {
-  #   stop("SJEEEEEEEB!!!!")
-  # } else {
+  if (length(coefs) != length(var_names)) {
+    stop("SJEEEEEEEB!!!!")
+  } else {
   
     # coefs <- sapply(coefs, as.double)
     # coefs <- sapply(coefs, round, digits = 4)
@@ -406,7 +400,111 @@ generate_X_out <- function(coefs, var_names, model){
     
     return(out)
   # }
+  }
+
+}
+
+getArCoefsModel <- function(Xset){
+  out <- list()
+  for (i in 1:ncol(Xset)) {
+    Xt <- as.numeric(unlist(Xset[,i]))
+    Xt1 <- lagSeries(as.numeric(unlist(Xt)),1)
+    model <- lm(Xt ~ Xt1)
+    intercept <- round(summary(lm(Xt ~ Xt1))$coefficients[1,1],digits = 4)
+    phi <- round(summary(lm(Xt ~ Xt1))$coefficients[2,1],digits = 4)
+    lst <- c(intercept, phi)
+    out[[i]] <- list(lst, model)
+  }
+  return(out)
+}
+
+getXRs <- function(Xset){
+  #takes the ouptut of getArCoefs and returns a list of R2 values for each model
+  lst <- getArCoefsModel(Xset)
+  r2s <- c()
+  for (i in 1:length(lst)) {
+    r2 <- summary(lst[[i]][[2]])$r.squared
+    r2s <- c(r2s, r2)
+  }
+  return (sapply(r2s,round, digits = 3))
+}
+
+getXDWs <- function(Xset){
+  lst <- getArCoefsModel(Xset)
+  dws <- c()
+  for(i in 1:length(lst)){
+    dw <- getDWstat(summary(lst[[i]][[2]]$residuals))
+    dws <- c(dws, dw)
+  }
+  return(sapply(dws,round, digits = 3))
+}
+
+generate_X_out2 <- function(Xset){
+  
+  #getting varnames
+  var_names <- colnames(Xset)
+  
+  #getting the coefficients and r2
+  coefs <- list()
+  for (i in 1:ncol(Xset)) {
+    coef12 <- getArCoefsModel(Xset)[[i]][[1]] 
+    coefs[[i]] <- coef12
+  }
+  
+  r2s <- getXRs(Xset)
+  dws <- getXDWs(Xset)
+  
+  N <- length(coefs)
+  
+  r2_list <-c("R Squared",r2s)
+  dw_list <-c("Durbin Watson", dws)
+  
+  first_row_num <-c()
+  rest_rbind <- list()
+  for (i in 1:N) {
+    first_row_num <- c(first_row_num, coefs[[i]][1])
+    between <- rep2("-",i-1)
+    end <- rep2("-",N-i)
+    rest_rbind[[i]] <- c(between, coefs[[i]][2], end)
+    
+    
+  }
+  
+  out <- rbind(first_row_num)
+  for (i in rest_rbind) {
+    out <- rbind(out,i)
+  }
+  
+  
+  first_column <- c("Intercept")
+  to_paste <- "_t-1"
+  for (name in var_names) {
+    val <- paste(name, to_paste)
+    first_column <- c(first_column, val)
+  }
+  out <- cbind(first_column, out)
+  out <- rbind(out,r2_list, dw_list)
+  colnames(out) <- c("Variables",var_names)
+  
+  return(out)
+  
+  
+  
+  
 }
 
 
-
+modelFitPrepare <-function(Xset){
+  if(is.null(ncol(Xset)) || is.na(ncol(Xset))){
+    return(unlist(Xset))
+  } else {
+  
+  Xset <- data.frame(Xset)
+  nCols <- length(Xset)
+  newX <- cbind()
+  for (k in 1:nCols) {
+    newX <- cbind(newX, unlist(Xset[,k]))
+  }
+  return(newX)
+  }
+}

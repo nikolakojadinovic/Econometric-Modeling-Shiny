@@ -7,7 +7,7 @@ library(DT)
 library(reshape2)
 library(urca)
 library(systemfit)
-
+library(nlme)
 
 
 
@@ -168,8 +168,18 @@ output$input_1lag <- renderUI({
 })
 
 output$input_2lag <- renderUI({
-  selectInput("cols_2lag", "Select variables for this transformation", choices = c("None", columns_numerical()), multiple = TRUE )
+  selectInput("cols_2lag", "Select variables for this transformation", choices = c("None", columns_numerical()), multiple = TRUE)
 })
+
+output$input_ld1 <- renderUI({
+  selectInput("cols_ld1", "Select variables for this transformation", choices = c("None", columns_numerical()), multiple = TRUE)
+})
+
+output$input_ld2 <- renderUI({
+  selectInput("cols_ld2","Select variables for this transformation", choices = c("None", columns_numerical()), multiple = TRUE)
+})
+
+
 
 logit_cols <- reactive({
   
@@ -277,29 +287,52 @@ lag2_cols <- reactive({
   }
 })
 
-
-transformed_data <- reactive({
-  data.frame(cbind(logit_cols(), z_cols(), ln_cols(), diff1_cols(), diff2_cols(), lag1_cols(), lag2_cols()))
+ld1_cols <- reactive({
+  if ("None" %in% input$cols_ld1) {
+    return(cbind())
+  } else {
+    to_paste <- "_l1.1st_diff"
+    df_for_ld1 <- data1()[,req(input$cols_ld1)]
+    df_ld1 <- transformDataset(df_for_ld1, "ld1")
+    cols <- as.character(input$cols_ld1)
+    colnames(df_ld1) <- lapply(cols, function (x) paste(x, to_paste))
+    return(df_ld1)
+  }
 })
 
+ld2_cols <- reactive({
+  if ("None" %in% input$cols_ld2) {
+    return (cbind())
+  } else {
+    to_paste <- "_l1.2nd_diff"
+    df_for_ld2 <- data1()[, req(input$cols_ld2)]
+    df_ld2 <- transformDataset(df_for_ld2, "ld2")
+    cols <- as.character(input$cols_ld2)
+    colnames(df_ld2) <- lapply(cols, function(x) paste(x, to_paste))
+    return(df_ld2)
+  }
+})
 
-# old_and_transformed <- reactive({
-#   
-#   cbind(transformed_data(), data1())
-#   
-# })
-
+transformed_data <- reactive({
+  data.frame(cbind(logit_cols(), z_cols(), ln_cols(), diff1_cols(), diff2_cols(), lag1_cols(), lag2_cols(), ld1_cols(), ld2_cols()))
+})
 
 
 
 old_and_transformed <- reactive({
+  
+  
   if ((is.null(input$cols_logit) && is.null(input$cols_zscore) && is.null(input$cols_ln) &&
-       is.null(input$cols_1diff) && is.null(input$cols_2diff) && is.null(input$cols_1lag) && is.null(input$cols_2lag)) ||
+       is.null(input$cols_1diff) && is.null(input$cols_2diff) && is.null(input$cols_1lag) && is.null(input$cols_2lag) && is.null(input$cols_ld1)
+       && is.null(input$cols_ld2)) ||
       ("None" %in% input$cols_logit && "None" %in% input$cols_zscore && "None" %in% input$cols_ln
        && "None" %in% input$cols_1diff && "None" %in% input$cols_2diff
-       && "None" %in% input$cols_1lag && "None" %in% input$cols_2lag))  {
+       && "None" %in% input$cols_1lag && "None" %in% input$cols_2lag && "None" %in% input$cols_ld1 && "None" %in% input$cols_ld2))  {
+    
     data1()
   } else {
+    
+    
     cbind(data1(), transformed_data())
   }
 
@@ -310,7 +343,8 @@ columns_final <- reactive({
 })
 
 output$transformed <- renderTable({
-  cbind(logit_cols(), z_cols(), ln_cols(), diff1_cols(), diff2_cols(), lag1_cols(), lag2_cols())
+  cbind(logit_cols(), z_cols(), ln_cols(), diff1_cols(), diff2_cols(), lag1_cols(), lag2_cols(), ld1_cols(), ld2_cols())
+  
 })
 
 
@@ -395,7 +429,28 @@ output$ar1 <- renderUI({
 
 #construction of variables - dependent
 dep <- reactive({
-  old_and_transformed()[,req(input$dep_var)]
+ old_and_transformed()[,req(input$dep_var)]
+
+})
+
+tip <- reactive({
+  typeof(dep())
+})
+dep2 <<- reactive({
+  return(as.numeric(unlist(dep())))
+})
+tip2 <- reactive({
+  typeof(dep2())
+})
+output$tipcina <- renderText({
+  c(tip(), tip2())
+})
+output$testina <- renderTable({
+  dep2()
+})
+
+output$test <- renderTable({
+  dep()
 })
 
 l1_dep <- reactive({
@@ -411,16 +466,29 @@ dep_df <- reactive({
 })
 
 
-
 #construction of variables  - independents
 indeps_df <- reactive({
-  old_and_transformed()[,req(input$ind_vars)]
+  old_and_transformed()[as.character(req(input$ind_vars))]
+ 
 })
+
+
 
 ar1_df <- reactive({
   old_and_transformed()[,req(input$ar1_vars)]
 })
 
+total_indeps <- reactive({
+  cbind(indeps_df(), ar1_df())
+})
+
+total_ar_coefs <-reactive({
+  getArCoefs(total_indeps())
+})
+
+output$test <- renderTable({
+  total_indeps()
+})
 
 ncol_indeps <- reactive({
   ncol(indeps_df())
@@ -429,16 +497,21 @@ ncol_indeps <- reactive({
 #estimation itself
 
 mainEquation <- reactive({
-  dep() ~ indeps_df()
+  dep() ~ total_indeps()
   
 })
 
+XXset <- reactive({
+  newX <- cbind(indeps_df(), ar1_df())
+  newX
+})
+
 system <- reactive({
-  getSystem(Y = dep(), Xset = indeps_df())
+  getSystem2(dep(),total_indeps())
 })
 
 system1 <- reactive({
-  getSystem(Y = dep(), Xset = ar1_df())
+  getSystem2(dep(),ar1_df())
 })
 
 model <- reactive({
@@ -449,7 +522,14 @@ model1 <- reactive({
   systemfit(system1(), method = "SUR")
 })
 
+model2 <<- reactive({
+  nlme :: gls(dep2() ~ modelFitPrepare(total_indeps()), na.action = na.omit)
+ 
+})
 
+actual_coefs <- reactive({
+  as.double(model2()$coefficients)
+})
 
 
 coefs_all <- reactive({
@@ -458,7 +538,9 @@ coefs_all <- reactive({
 
 
 coefs_dep <- reactive({
-  coefs_all()[[1]]
+  cfs <- getSurCoefs(model(),1)
+  cfs <- cfs[[1]]
+  cfs
 })
 
 coefs_indep <- reactive({
@@ -469,6 +551,9 @@ coefs_indep1 <- reactive({
   getSurCoefs(model1(),2)
 })
 
+coefs_ar <- reactive({
+  getArCoefs(indeps_df())
+})
 ####################### MODEL ESTIMATION
 
 ####################### PRINTING RESULTS ON CLIENT
@@ -476,11 +561,11 @@ coefs_indep1 <- reactive({
 
 ### MAIN EQUATION OUTPUT
 first_row_out <- reactive({
- c(as.character(input$dep_var), "Intercept", as.character(input$ind_vars), "R Squared", "Durbin Watson")
+ c(as.character(input$dep_var), "Intercept", as.character(input$ind_vars), as.character(input$ar1_vars),  "R Squared", "Durbin Watson")
 })
 
 second_row_out <- reactive({
-  c("coefs: ", sapply(coefs_dep(), round, digits = 4), round(summary(model()[[1]][[1]])$adj.r.squared, digits = 2), round(getDWstat(model()[[1]][[1]]$residuals), digits = 3))
+  c("coefs: ", actual_coefs(), summary(model()[[1]][[1]])$adj.r.squared, getDWstat(model()[[1]][[1]]$residuals))
 })
 
 third_row_out <- reactive({
@@ -494,7 +579,7 @@ df_out <- reactive({
 })
 
 x_out <- reactive({
-  generate_X_out(coefs_indep1(), as.character(input$ar1_vars), model1())
+  generate_X_out2(total_indeps())
 })
 
 output$sur_y_out <- renderTable({
