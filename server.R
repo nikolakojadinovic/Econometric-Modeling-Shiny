@@ -8,6 +8,8 @@ library(reshape2)
 library(urca)
 library(systemfit)
 library(nlme)
+library(rhandsontable)
+
 
 
 
@@ -41,11 +43,56 @@ shinyServer(function(input, output, session){
       }
   })
   
-  
-  
-  data1 <- reactive({
-    handleMissing(data(), input$nas)
+  data_mid <- reactive({
+    handleMissing(data(), input$nas) 
   })
+  
+  
+  
+  len_data <- reactive({
+    nrow(data_mid())
+  })
+  
+  
+  date_col <- reactive({
+    date_range <- cbind(sapply(seq.Date(from = req(input$startdate),
+                              by = req(input$ts),
+                              length.out = len_data()),as.character.Date))
+    
+    colnames(date_range) <- "Date_Index"
+    return(date_range) 
+  
+    
+  })
+  
+  first_year <- reactive({
+    date <- strsplit(date_col()[[1]],"-")
+    return(date[[1]][1])
+  })
+  
+  last_year <- reactive({
+    date <- strsplit(date_col()[[length(date_col)]], "-")[[1]]
+    return(date[[1]][1])
+  })
+  
+
+  data1 <- reactive({
+    if (is.null(date_col()) || is.na(date_col())) {
+      return(data_mid())
+    } else {
+      return(cbind(date_col(), data_mid()))
+    }
+  })
+  
+  # output$datum <- renderPrint({
+  #   df <- data.frame(date_col()) #data.frame
+  #   colnames(df) <- "Date_Index"
+  #   return(df)
+  # })
+  
+
+  
+  
   
   columns_all <- reactive({
     names(data1())
@@ -425,7 +472,7 @@ output$ar1 <- renderUI({
 })
 ####################### GETTING USER INPUT
 
-####################### MODEL ESTIMATION
+####################### SUR MODEL ESTIMATION
 
 #construction of variables - dependent
 dep <- reactive({
@@ -433,37 +480,10 @@ dep <- reactive({
 
 })
 
-tip <- reactive({
-  typeof(dep())
-})
 dep2 <<- reactive({
   return(as.numeric(unlist(dep())))
 })
-tip2 <- reactive({
-  typeof(dep2())
-})
-output$tipcina <- renderText({
-  c(tip(), tip2())
-})
-output$testina <- renderTable({
-  dep2()
-})
 
-output$test <- renderTable({
-  dep()
-})
-
-l1_dep <- reactive({
-  lagSeries(unlist(dep()),1)
-})
-
-l2_dep <- reactive({
-  lagSeries(unlist(dep()),2)
-})
-
-dep_df <- reactive({
-  cbind(dep(), l1_dep(), l2_dep())
-})
 
 
 #construction of variables  - independents
@@ -471,7 +491,6 @@ indeps_df <- reactive({
   old_and_transformed()[as.character(req(input$ind_vars))]
  
 })
-
 
 
 ar1_df <- reactive({
@@ -482,13 +501,10 @@ total_indeps <- reactive({
   cbind(indeps_df(), ar1_df())
 })
 
-total_ar_coefs <-reactive({
+total_ar_coefs <- reactive({
   getArCoefs(total_indeps())
 })
 
-output$test <- renderTable({
-  total_indeps()
-})
 
 ncol_indeps <- reactive({
   ncol(indeps_df())
@@ -496,31 +512,6 @@ ncol_indeps <- reactive({
 
 #estimation itself
 
-mainEquation <- reactive({
-  dep() ~ total_indeps()
-  
-})
-
-XXset <- reactive({
-  newX <- cbind(indeps_df(), ar1_df())
-  newX
-})
-
-system <- reactive({
-  getSystem2(dep(),total_indeps())
-})
-
-system1 <- reactive({
-  getSystem2(dep(),ar1_df())
-})
-
-model <- reactive({
- systemfit(system(), method = "SUR")
-})
-
-model1 <- reactive({
-  systemfit(system1(), method = "SUR")
-})
 
 model2 <<- reactive({
   nlme :: gls(dep2() ~ modelFitPrepare(total_indeps()), na.action = na.omit)
@@ -532,45 +523,40 @@ actual_coefs <- reactive({
 })
 
 
-coefs_all <- reactive({
-  getSurCoefs(model(),1)
-})
-
-
-coefs_dep <- reactive({
-  cfs <- getSurCoefs(model(),1)
-  cfs <- cfs[[1]]
-  cfs
-})
-
-coefs_indep <- reactive({
-  getSurCoefs(model(),2)
-})
-
-coefs_indep1 <- reactive({
-  getSurCoefs(model1(),2)
-})
 
 coefs_ar <- reactive({
   getArCoefs(indeps_df())
 })
-####################### MODEL ESTIMATION
+
+indeps_models <- reactive({
+  getArCoefsModel(total_indeps())
+})
+
+####################### SUR MODEL ESTIMATION
 
 ####################### PRINTING RESULTS ON CLIENT
 
 
 ### MAIN EQUATION OUTPUT
+r2_main <- reactive({
+  getR2(dep2(), model2()$fitted)
+})
+
 first_row_out <- reactive({
  c(as.character(input$dep_var), "Intercept", as.character(input$ind_vars), as.character(input$ar1_vars),  "R Squared", "Durbin Watson")
 })
 
 second_row_out <- reactive({
-  c("coefs: ", actual_coefs(), summary(model()[[1]][[1]])$adj.r.squared, getDWstat(model()[[1]][[1]]$residuals))
+  c("coefs: ", sapply(actual_coefs(), round, digits = 4), r2_main(), getDWstat(model2()$residuals))
 })
 
 third_row_out <- reactive({
-  c("p-value:", sapply(getPValues(summary(model()[[1]][[1]])$coefficients), round, digits = 4), "-", "-")
+  c("p-value:", sapply(getPVals(model2()), round, digits = 4), "-", "-")
 })
+### MAIN EQUATION OUPUT
+
+
+###AR(1) OUTPUT
 
 df_out <- reactive({
   df <- rbind(second_row_out(), third_row_out())
@@ -592,13 +578,6 @@ output$sur_x_out <- renderTable({
   input$action
   isolate(x_out())
 })
-### MAIN EQUATION OUPUT
-
-###AR(1) OUTPUT
-
-
-
-
 
 ###AR(1) OUTPUT
 
@@ -607,7 +586,152 @@ output$sur_x_out <- renderTable({
 
 #################################################  SUR MODELS 
 
+################################################# OLS MODELS
 
+################################################# OLS MODELS
+
+################################################# MONTE CARLO 
+
+
+
+###################### CREATING STRESSED SCENARIO - CHANGE FETCHING
+previous_data <- reactive({
+  if(is.null(old_and_transformed()) || is.na(old_and_transformed())){
+    round_df(data1(), digits = 2)
+  }
+  else {
+    round_df(old_and_transformed(), digits = 2)
+  }
+})
+
+
+
+
+rows_arg <- reactive({
+  nrow(previous_data())
+})
+
+cols_arg <- reactive({
+  ncol(previous_data())
+})
+
+
+output$editable <- renderRHandsontable({
+  rhandsontable(previous_data())
+    
+})
+
+observeEvent(input$changeBtn,{
+  
+  stressed <<- reactive({
+    df <- data.frame(matrix(cbind(unlist(req(input$editable))),
+                            nrow = rows_arg(), 
+                            ncol = cols_arg(),
+                            byrow = TRUE))
+    
+    colnames(df) <- colnames(previous_data())
+    return(round_df(df, digits = 2))
+  })
+  
+  
+})
+
+
+# output$bool <- renderTable({
+#   stressed() == previous_data()
+# })
+
+
+
+output$prev <- renderTable({
+  previous_data()
+})
+
+
+output$startY <- renderUI({
+  selectInput("starty", "Select start date for the simulation horizon",
+              choices = date_col())
+})
+
+remain_index <- reactive({
+  which(date_col() == as.character(input$starty))
+})
+
+endy_choices <- reactive({
+  date_col()[(remain_index()+1):length(date_col())]
+})
+
+output$endY <- renderUI({
+  selectInput("endy", "Select end date for the simulation horizon",
+              choices = endy_choices())
+})
+
+endy_index <- reactive({
+  which(date_col() == as.character(input$endy))
+})
+
+data_baseline_simulation <- reactive({
+  previous_data()[remain_index():endy_index(),]
+})
+
+dep_resid <- reactive({
+  model2()$residuals[remain_index():endy_index()]
+})
+
+indeps_resid <- reactive({
+  getXresidDF(indeps_models())
+})
+
+
+residual_df_base <- reactive({
+ inds <- matrix(unlist(indeps_resid()), nrow = length(indeps_resid()[[1]]),
+         ncol = length(indeps_resid()), byrow = T)
+ return(cbind(dep_resid(), inds))
+})
+
+cholesky_base <- reactive({
+  chol(cov(residual_df_base()))
+})
+
+inner_loop_end <- reactive({
+  endy_index() - remain_index()
+})
+
+rnorm_len <- reactive({
+  ncol(residual_df_base())
+})
+
+outer_loop_end <- reactive({
+  as.integer(as.integer(input$nruns) / inner_loop_end())
+})
+
+
+
+simulated_baseline <- reactive({
+  run_baseline(inner = inner_loop_end(),
+                      outer = outer_loop_end(),
+                      dim =  rnorm_len(),
+                      start_index = remain_index(),
+                      chol = cholesky_base(),
+                      model = model2())
+})
+
+
+
+output$proba <- renderPrint({
+  simulated_baseline()
+})
+###################### CREATING STRESSED SCENARIO - CHANGE FETCHING
+
+###################### ACTUAL MONTE CARLO SIMULATION
+
+
+
+
+
+###################### ACTUAL MONTE CARLO SIMULATION
+
+################################################# MONTE CARLO SIMULATIONS
 
 
 ##################################################################### DATA MODELING OUTPUT

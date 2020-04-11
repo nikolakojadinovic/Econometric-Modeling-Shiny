@@ -418,6 +418,7 @@ getArCoefsModel <- function(Xset){
   return(out)
 }
 
+
 getXRs <- function(Xset){
   #takes the ouptut of getArCoefs and returns a list of R2 values for each model
   lst <- getArCoefsModel(Xset)
@@ -493,6 +494,34 @@ generate_X_out2 <- function(Xset){
   
 }
 
+getR2 <- function(y, yhat){
+  if (length(y) != length(yhat)) {
+    stop("SJEEEB")
+  } else {
+    N <- length(y)
+    ybar <- mean(y)
+    sum_up <-0
+    sum_down <-0
+    for (i in 1:N) {
+      sum_up <- sum_up + (y[i] - yhat[i]) **2
+      sum_down <- sum_down + (y[i] - ybar)**2
+  
+    }
+   
+    return(round(1-(sum_up/sum_down), digits = 3))
+  }
+}
+
+getPVals <- function(model_obj){
+  tTable <- summary(model_obj)$tTable
+  N <- nrow(tTable)
+  coefs <- c()
+  for(i in 1:N){
+    coefs <- c(coefs, tTable[i,4])
+  }
+  return(coefs)
+  
+}
 
 modelFitPrepare <-function(Xset){
   if(is.null(ncol(Xset)) || is.na(ncol(Xset))){

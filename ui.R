@@ -8,6 +8,8 @@ library(reshape2)
 library(urca)
 library(systemfit)
 library(nlme)
+library(rhandsontable)
+
 
 
 
@@ -29,6 +31,20 @@ shinyUI(
                  menuSubItem(radioButtons("nas", "Handle missing values", 
                                           choices = c("Omit rows with NAs" = "omit_rows","Replace with mean" = "rep_mean_mode", "Replace with median" = "rep_median_mode"))),
                  menuSubItem(checkboxInput("header", "Header", value = TRUE))),
+        menuItem("Time series upload options", tabName = "ts", icon = icon("upload"),
+                 menuSubItem(radioButtons("ts", "Time series frequency",
+                                          choices = c("daily" = "day",
+                                                      "monthly" = "month",
+                                                      "yearly" = "year"),
+                                          selected = NULL)),
+                 menuSubItem(dateInput(
+                   inputId =  "startdate", 
+                   label = "Select starting date:", 
+                   value = Sys.Date() - 10,
+                   min = as.Date("1970/01/01")
+                 )),
+                 helpText("Choose Jan 1st if your data is"),
+                 helpText("monthly or yearly.")),
         
         menuItem("Data", tabName = "data", icon = icon("database"),
                  menuSubItem("Summary", tabName = "summary"),
@@ -40,8 +56,8 @@ shinyUI(
         menuItem("Data Modeling", tabName = "models", icon = icon("sitemap"),
                  menuSubItem("Unit Root Test", tabName = "unit"),
                  menuSubItem("OLS Linear Regression", tabName = "linreg"),
-                 menuSubItem("SUR Models", tabName = "sur" ),
-                 menuSubItem("Monte Carlo Simulation", tabName = "mc" )),
+                 menuSubItem("SUR Models", tabName = "sur" )),
+        menuItem("Monte Carlo Simulation", tabName = "mc", icon = icon("infinity")),
         
         menuItem("About", tabName = "about",icon = icon("clipboard")),
         menuItem("TEST", tabName = "TEST")
@@ -118,8 +134,36 @@ shinyUI(
                             tableOutput("sur_x_out")))
                 )),
         
-        tabItem(tabName = "about", textOutput("test1")),
-        tabItem(tabName = "TEST", textOutput("tipcina"), tableOutput("testina"))
+        tabItem(tabName = "mc",
+                fluidRow(
+                  tabBox(
+                      tabPanel(h3("Creating stressed scenarios"), 
+                               helpText("Overwrite values in cells to represent stressed scenario. Make sure you change the dependent variables from SUR model to see the impact of stress testing!"),
+                               actionButton("changeBtn", "Apply changes"),
+                                rHandsontableOutput("editable")),
+                      tabPanel(h3("Run Monte Carlo"),
+                               radioButtons("nruns", "Select number of runs",
+                                            choices = c("1000" = 1000,
+                                                        "5000" = 5000,
+                                                        "10000" = 10000
+                                                        )),
+                          
+                               checkboxInput("reverse", "Revert transformations"),
+                               uiOutput("startY"),
+                               uiOutput("endY"),
+                               helpText("Revert transformation if your dependent variable in SUR model was previously transformed.
+                                        If that's not the case (or if you want to see the simulation result on a transformed scale), leave it unchecked."),
+                               actionButton("runmc", "Run Monte Carlo!")),
+                               
+                      tabPanel(h3("Simulation results"), tableOutput("result")))
+                  
+                  
+                  
+                )),
+        
+        
+        tabItem(tabName = "about", tableOutput("proba1")),
+        tabItem(tabName = "TEST", textOutput("proba"))
         
         
 
