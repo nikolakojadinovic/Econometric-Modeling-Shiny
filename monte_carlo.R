@@ -29,8 +29,24 @@ getXresidDF <- function(coef_model_out){
   return(resid)
 }
 
+logit2prob <- function(logit){
+  odds <- exp(logit)
+  prob <- odds / (1 + odds)
+  return(prob)
+}
+
 revertTransformations <- function(){
   
+}
+
+inverse_logit <-function(col){
+  res_list <-c()
+  for (i in 1:length(col)) {
+    transformed_value <- 1/(exp(col[i]) + 1)
+    res_list <- c(res_list, transformed_value)
+    
+  }
+  return(res_list)
 }
 
 # getStressedVars <- function(base, stress, indeps){
@@ -69,7 +85,7 @@ run_baseline <- function(inner, outer, dim, start_index, chol, model){
       curr_estimate <- chol %% z_rand
       curr_single <- curr_estimate[1,1]
       simulated <- model$fitted[start] + curr_single
-      baseline <- c(baseline, simulated)
+      baseline <- c(baseline, inverse_logit(diffinv(simulated)))
       start = start + 1
     }
   }

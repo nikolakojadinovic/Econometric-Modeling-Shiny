@@ -80,12 +80,16 @@ shinyUI(
                 fluidRow(
                   
                   box(title = "Histogram", uiOutput("inputwidget_hist"), 
-                      sliderInput("bins", "Select number of bins", min = 5, max = 20, value = 8),
-                            plotOutput("histogram", height = 350, width = 500)),
+                      sliderInput("bins", "Select number of bins", min = 5, max = 60, value = 8),
+                            plotOutput("histogram", height = 350, width = 500),
+                            downloadButton("down_hist", "Download the plot"),
+                      solidHeader = T, collapsible = T, status = "primary"),
                   
-                  box(title = "Line chart",uiOutput("inputwidget1_line"), plotOutput("linechart", height = 350, width = 450)),
+                  box(title = "Line chart",uiOutput("inputwidget1_line"), plotOutput("linechart", height = 350, width = 650),
+                      downloadButton("down_line", "Download the plot"), solidHeader = T, collapsible = T, status = "primary"),
                   
-                  box(title = "Scatterplot",uiOutput("inputwidget2_scatter"), plotOutput("scatterplot", height = 350, width = 450))
+                  box(title = "Scatterplot",uiOutput("inputwidget2_scatter"), plotOutput("scatterplot", height = 350, width = 450),
+                      downloadButton("down_scatter", "Download the plot"), solidHeader = T, collapsible = T, status = "primary")
                  
                   
                   
@@ -108,7 +112,7 @@ shinyUI(
                 
                   
          
-         box(title = "Results", style = 'overflow-x: scroll', tableOutput("transformed"))
+         box(title = "Results", style = 'overflow-x: scroll', tableOutput("transformed"), solidHeader = T, collapsible = T, status = "primary")
          )),
         
         
@@ -117,21 +121,25 @@ shinyUI(
                   box(title = h3("Unit Root Test Options"), uiOutput("unit_vars"), 
                       radioButtons("test", "Select test", 
                       choices = c("ADF" = "adf", "Phillips Perron" = "pp")),
-                      uiOutput("test_type")),
-                  box(title = h3("Test Results"), tableOutput("unit_table"))
+                      uiOutput("test_type"),
+                      solidHeader = T, collapsible = T, status = "primary"),
+                  box(title = h3("Test Results"), tableOutput("unit_table"), downloadButton("down_unit", "Download the report"),
+                      solidHeader = T, collapsible = T, status = "primary")
                 )),
         
         tabItem(tabName = "sur",
                 fluidRow(
                   
-                    box(h3("Evaluation Loop Options"), uiOutput("y"), uiOutput("x"), uiOutput("ar1"), actionButton("action", "Estimate the model!")),
+                    box(h3("Model Specification"), uiOutput("y"), uiOutput("x"), uiOutput("ar1"), actionButton("action", "Estimate the model!"),
+                        solidHeader = T, collapsible = T, status = "primary"),
           
 
                     box(h3("SUR model summary"), 
                         helpText("Main equation summary"),
                         div(style = 'overflow-x: scroll', tableOutput('sur_y_out'), 
                             helpText("AR (1) equations summary"), 
-                            tableOutput("sur_x_out")))
+                            tableOutput("sur_x_out")),
+                        solidHeader = T, collapsible = T, status = "primary")
                 )),
         
         tabItem(tabName = "mc",
@@ -153,17 +161,18 @@ shinyUI(
                                uiOutput("endY"),
                                helpText("Revert transformation if your dependent variable in SUR model was previously transformed.
                                         If that's not the case (or if you want to see the simulation result on a transformed scale), leave it unchecked."),
-                               actionButton("runmc", "Run Monte Carlo!")),
-                               
-                      tabPanel(h3("Simulation results"), tableOutput("result")))
+                               actionButton("runmc", "Run Monte Carlo!"))
+                      
                   
                   
-                  
-                )),
+                ),
+                box(h3("Monte Carlo Simulation Results"), plotOutput("monte_carlo_histogram"),solidHeader = T, collapsible = T, status = "primary", background = "navy"))),
         
         
-        tabItem(tabName = "about", tableOutput("proba1")),
-        tabItem(tabName = "TEST", textOutput("proba"))
+        
+        
+        tabItem(tabName = "about"),
+        tabItem(tabName = "TEST", tableOutput("melted"))
         
         
 

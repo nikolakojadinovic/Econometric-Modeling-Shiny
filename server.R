@@ -141,45 +141,102 @@ shinyServer(function(input, output, session){
   
   
   output$inputwidget_hist <- renderUI({
-    selectInput("col", "Select the column", choices = columns_numerical())
+    selectInput("col", "Select the column", choices = columns_plot_final())
   })
   
   output$inputwidget1_line <- renderUI({
-    selectizeInput("cols1", "Select multiple variables", choices = columns_numerical(), multiple = TRUE)
+    selectizeInput("cols1", "Select multiple variables", choices = columns_plot_final(), multiple = TRUE)
   })
   
   output$inputwidget2_scatter <- renderUI({
-    selectizeInput("cols2", "Select up to 2 variables", choices = columns_numerical(), multiple = TRUE, options = list(maxItems = 2))
+    selectizeInput("cols2", "Select 2 variables", choices = columns_numerical(), multiple = TRUE, options = list(maxItems = 2))
   })
     
+  hist <- reactive({
+    ggplot(old_and_transformed(), aes(x=unlist(old_and_transformed()[,input$col]))) + geom_histogram(color = "blue", 
+                                                                         alpha = 0.8,
+                                                                         bins = input$bins) + xlab(input$col) +
+      theme(panel.grid.major = element_line(size = 0.1, linetype = "solid"), 
+            panel.grid.minor = element_blank(),
+            panel.background = element_rect(fill ="lightblue")) 
+  })
   
   output$histogram <- renderPlot({
-    ggplot(data1(), aes(x=unlist(data1()[,input$col]))) + geom_histogram(color = "green", 
-                                                                         alpha = 0.5,
-                                                                         bins = input$bins) + xlab(input$col)
+    hist()
   })
+  
+ output$down_hist <- downloadHandler(
+    filename = function(){
+      paste("Histogram", as.character(Sys.Date()), ".png", sep = "_")
+    },
+    content = function(file){
+      png(file)
+      print(hist())
+      dev.off()
+      
+    }
+  )
   
   data_line_plot <- reactive({
-    plotLineDfFormatter(data1(), req(input$cols1))
+    
+    plotLineDfFormatter(old_and_transformed(), req(input$cols1))
+    
   })
   
+  output$melted <- renderTable({
+    data_line_plot()
+  })
   
+  linech <- reactive({
+    ggplot(data_line_plot(), aes_string(x =  unlist(data_line_plot()[,1]),
+                                        y = unlist(data_line_plot()[,3]),
+                                        col = unlist(data_line_plot()[,2]))) + 
+      geom_line(size = 1) + 
+      theme(panel.grid.major = element_line(size = 0.1, linetype = "solid"), 
+            panel.grid.minor = element_blank(),
+            panel.background = element_rect(fill ="lightblue")) 
+      
+  })
   
   output$linechart <- renderPlot({
-    ggplot(data_line_plot(), aes_string(x = unlist(data_line_plot()[,1]),
-                       y = unlist(data_line_plot()[,3]),
-                       colour = unlist(data_line_plot()[,2]))) + geom_line() + xlab(names(data_line_plot()[,1]))
+    # ggplot(data_line_plot(), aes_string(x = unlist(data_line_plot()[,1]),
+    #                    y = unlist(data_line_plot()[,3]),
+    #                    colour = unlist(data_line_plot()[,2]))) + geom_line() + xlab(names(data_line_plot()[,1])) 
+    linech()
   })
   
   
-
+  output$down_line <- downloadHandler(
+    filename = function(){
+      paste("Linechart", as.character(Sys.Date()), ".png", sep = "_")
+    },
+    content = function(file){
+      png(file)
+      print(linech())
+      dev.off()
+    }
+  )
   
+  scatt <- reactive({
+    ggplot(data1(), aes(x = unlist(data1()[,req(input$cols2[1])]),
+                        y = unlist(data1()[,req(input$cols2[2])]))) + geom_point() + xlab(input$cols2[1]) + ylab(input$cols2[2])
+  })
   
   output$scatterplot <- renderPlot({
     ggplot(data1(), aes(x = unlist(data1()[,req(input$cols2[1])]),
                         y = unlist(data1()[,req(input$cols2[2])]))) + geom_point() + xlab(input$cols2[1]) + ylab(input$cols2[2])
   })
   
+  output$down_scatter <- downloadHandler(
+    filename =  function(){
+      paste("Scatterplot", as.character(Sys.Date()), ".png", sep = "_")
+    },
+    content = function(file){
+      png(file)
+      print(scatt())
+      dev.off()
+    }
+  )
 ################################################# VISUALIZATION PLOTS
 
 
@@ -389,6 +446,10 @@ columns_final <- reactive({
   names(old_and_transformed())
 })
 
+
+columns_plot_final <- reactive({
+  names(getNumeric(old_and_transformed()))
+})
 output$transformed <- renderTable({
   cbind(logit_cols(), z_cols(), ln_cols(), diff1_cols(), diff2_cols(), lag1_cols(), lag2_cols(), ld1_cols(), ld2_cols())
   
@@ -422,10 +483,23 @@ unit_vars_df <- reactive({
   old_and_transformed()[, req(input$unit_vars)]
 })
 
+unitt <- function(){
+  data.frame(generate_output_table(unit_vars_df(),test = req(input$test)))
+}
 output$unit_table <- renderTable({
-  generate_output_table(unit_vars_df(),test = req(input$test))
+  unitt()
 })
 
+output$down_unit <- downloadHandler(
+  filename = function(){
+    paste("UnitRootTest", as.character(Sys.Date()), ".csv", sep = "_")
+  },
+  content = function(file){
+    write.csv(unitt(), file)
+    
+    
+  }
+)
 
 ################################################# UNIT ROOT TESTS
 
@@ -637,16 +711,10 @@ observeEvent(input$changeBtn,{
 })
 
 
-# output$bool <- renderTable({
-#   stressed() == previous_data()
-# })
 
+###################### CREATING STRESSED SCENARIO - CHANGE FETCHING
 
-
-output$prev <- renderTable({
-  previous_data()
-})
-
+###################### ACTUAL MONTE CARLO SIMULATION
 
 output$startY <- renderUI({
   selectInput("starty", "Select start date for the simulation horizon",
@@ -670,12 +738,20 @@ endy_index <- reactive({
   which(date_col() == as.character(input$endy))
 })
 
+
+
+output$huhu <- renderPrint({
+  ncol(residual_df_base())
+})
+
+
+
 data_baseline_simulation <- reactive({
   previous_data()[remain_index():endy_index(),]
 })
 
 dep_resid <- reactive({
-  model2()$residuals[remain_index():endy_index()]
+  model2()$residuals
 })
 
 indeps_resid <- reactive({
@@ -683,10 +759,13 @@ indeps_resid <- reactive({
 })
 
 
+
+
 residual_df_base <- reactive({
- inds <- matrix(unlist(indeps_resid()), nrow = length(indeps_resid()[[1]]),
-         ncol = length(indeps_resid()), byrow = T)
- return(cbind(dep_resid(), inds))
+  inds <- matrix(unlist(indeps_resid()), nrow = length(indeps_resid()[[1]]),
+                 ncol = length(indeps_resid()), byrow = T)
+  df <- cbind(dep_resid(), inds)
+  return(df[remain_index():endy_index(),])
 })
 
 cholesky_base <- reactive({
@@ -708,12 +787,15 @@ outer_loop_end <- reactive({
 
 
 simulated_baseline <- reactive({
-  run_baseline(inner = inner_loop_end(),
-                      outer = outer_loop_end(),
-                      dim =  rnorm_len(),
-                      start_index = remain_index(),
-                      chol = cholesky_base(),
-                      model = model2())
+  values <- run_baseline(inner = inner_loop_end(),
+                         outer = outer_loop_end(),
+                         dim =  rnorm_len(),
+                         start_index = remain_index(),
+                         chol = cholesky_base(),
+                         model = model2())
+  df <- data.frame(cbind(values))
+  colnames(df) <- "baseline"
+  return(df)
 })
 
 
@@ -721,11 +803,12 @@ simulated_baseline <- reactive({
 output$proba <- renderPrint({
   simulated_baseline()
 })
-###################### CREATING STRESSED SCENARIO - CHANGE FETCHING
 
-###################### ACTUAL MONTE CARLO SIMULATION
-
-
+output$monte_carlo_histogram <- renderPlot({
+  ggplot(simulated_baseline(), aes(x=simulated_baseline()[["baseline"]])) + geom_histogram(color = "green", 
+                                                                                           alpha = 0.5, bins = 60) 
+  
+})
 
 
 
