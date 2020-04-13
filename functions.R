@@ -1,10 +1,15 @@
 library(shiny)
 library(shinydashboard)
+library(ggplot2)
+library(plotly)
+library(rsconnect)
 library(DT)
 library(reshape2)
 library(urca)
 library(systemfit)
 library(nlme)
+library(rhandsontable)
+library(excelR)
 
 
 

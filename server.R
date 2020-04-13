@@ -9,6 +9,7 @@ library(urca)
 library(systemfit)
 library(nlme)
 library(rhandsontable)
+library(excelR)
 
 
 
@@ -670,11 +671,11 @@ output$sur_x_out <- renderTable({
 
 ###################### CREATING STRESSED SCENARIO - CHANGE FETCHING
 previous_data <- reactive({
-  if(is.null(old_and_transformed()) || is.na(old_and_transformed())){
-    round_df(data1(), digits = 2)
+  if(is.null(total_indeps()) || is.na(total_indeps())){
+    return()
   }
   else {
-    round_df(old_and_transformed(), digits = 2)
+    round_df(cbind(date_col(),total_indeps()), digits = 2)
   }
 })
 
@@ -689,27 +690,43 @@ cols_arg <- reactive({
   ncol(previous_data())
 })
 
-
-output$editable <- renderRHandsontable({
+for_edit <- reactive({
   rhandsontable(previous_data())
-    
 })
 
-observeEvent(input$changeBtn,{
-  
-  stressed <<- reactive({
-    df <- data.frame(matrix(cbind(unlist(req(input$editable))),
-                            nrow = rows_arg(), 
-                            ncol = cols_arg(),
-                            byrow = TRUE))
-    
-    colnames(df) <- colnames(previous_data())
-    return(round_df(df, digits = 2))
-  })
-  
-  
+observe({
+  input$changeBtn
+  if(!is.null(values[["hot"]])){
+    for_edit <- reactive({
+      values$hot
+    })
+  }
 })
 
+observe({
+  if(!is.null(input$hot)){
+    for_edit <- reactive({
+      hot_to_r(input$hot)
+    })
+    setHot(for_edit())
+  }
+})
+
+output$hot <- renderRHandsontable({
+  for_edit()
+})
+
+stressed <- reactive({
+  hot_to_r(input$hot)
+})
+
+actual_stressed <- reactive({
+  getNumeric(stressed())
+})
+
+output$promena <- renderTable({
+  stressed()
+})
 
 
 ###################### CREATING STRESSED SCENARIO - CHANGE FETCHING
@@ -722,7 +739,7 @@ output$startY <- renderUI({
 })
 
 remain_index <- reactive({
-  which(date_col() == as.character(input$starty))
+  which(date_col() == as.character(req(input$starty)))
 })
 
 endy_choices <- reactive({
@@ -735,7 +752,7 @@ output$endY <- renderUI({
 })
 
 endy_index <- reactive({
-  which(date_col() == as.character(input$endy))
+  which(date_col() == as.character(req(input$endy)))
 })
 
 
@@ -781,36 +798,54 @@ rnorm_len <- reactive({
 })
 
 outer_loop_end <- reactive({
-  as.integer(as.integer(input$nruns) / inner_loop_end())
+  as.integer(as.integer(req(input$nruns)) / inner_loop_end())
 })
 
 
+stressed_estimates <- reactive({
+  getStressedEstimates(actual_stressed(), actual_coefs())
+})
 
-simulated_baseline <- reactive({
-  values <- run_baseline(inner = inner_loop_end(),
+mc_results <- reactive({
+  
+  values_baseline <- runMonteCarlo(inner = inner_loop_end(),
                          outer = outer_loop_end(),
                          dim =  rnorm_len(),
                          start_index = remain_index(),
                          chol = cholesky_base(),
                          model = model2())
-  df <- data.frame(cbind(values))
-  colnames(df) <- "baseline"
+  
+  values_stressed <- runMonteCarlo(inner = inner_loop_end(),
+                                    outer = outer_loop_end(),
+                                    dim =  rnorm_len(),
+                                    start_index = remain_index(),
+                                    chol = cholesky_base(),
+                                    model = model2(),
+                                    stress_estim = stressed_estimates())
+  
+  
+  df <- data.frame(cbind(values_baseline, values_stressed))
+  colnames(df) <- c("baseline", "stressed")
   return(df)
 })
 
 
-
-output$proba <- renderPrint({
-  simulated_baseline()
+output$melt_mc <- renderTable({
+  mc_results()
 })
 
+
 output$monte_carlo_histogram <- renderPlot({
-  ggplot(simulated_baseline(), aes(x=simulated_baseline()[["baseline"]])) + geom_histogram(color = "green", 
-                                                                                           alpha = 0.5, bins = 60) 
+  ggplot(mc_results()) + geom_histogram(aes(x = baseline), alpha = 0.3, color = "green", bins = 80) + 
+    geom_histogram(aes(x = stressed), alpha = 0.3, bins = 80) +
+    scale_y_continuous(limits = c(0, max(mc_results()[,1]) + 500)) +
+    scale_fill_identity(name = "Variables", guide = "legend", labels = c("baseline", "stressed"))
   
 })
 
-
+output$proba <- renderTable({
+  stressed()
+})
 
 ###################### ACTUAL MONTE CARLO SIMULATION
 

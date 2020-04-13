@@ -9,6 +9,7 @@ library(urca)
 library(systemfit)
 library(nlme)
 library(rhandsontable)
+library(excelR)
 
 
 
@@ -148,7 +149,7 @@ shinyUI(
                       tabPanel(h3("Creating stressed scenarios"), 
                                helpText("Overwrite values in cells to represent stressed scenario. Make sure you change the dependent variables from SUR model to see the impact of stress testing!"),
                                actionButton("changeBtn", "Apply changes"),
-                                rHandsontableOutput("editable")),
+                                rHandsontableOutput("hot")),
                       tabPanel(h3("Run Monte Carlo"),
                                radioButtons("nruns", "Select number of runs",
                                             choices = c("1000" = 1000,
@@ -171,8 +172,8 @@ shinyUI(
         
         
         
-        tabItem(tabName = "about"),
-        tabItem(tabName = "TEST", tableOutput("melted"))
+        tabItem(tabName = "about", tableOutput("melt_mc")),
+        tabItem(tabName = "TEST", tableOutput("proba"))
         
         
 

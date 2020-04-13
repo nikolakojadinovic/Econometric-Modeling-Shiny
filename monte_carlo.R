@@ -9,9 +9,37 @@ library(urca)
 library(systemfit)
 library(nlme)
 library(rhandsontable)
-library(jsonlite)
+library(excelR)
 
 
+#change fetching
+values <- list()
+setHot <- function(x){
+  values[["hot"]] <<-x
+}
+#change fetching
+
+
+getStressedEstimates <- function(stress_df, coefs_list){
+  intercept <- unlist(coefs_list)[1]
+  coefs_list <- unlist(coefs_list)[-1]
+  out <- list()
+  vals <- c()
+  for(i in 1:ncol(stress_df)){
+    curr_col <- stress_df[,i] * coefs_list[i]
+    out[[i]] <- curr_col
+  }
+  out <- data.frame(out)
+  
+  
+  for(j in 1:nrow(out)){
+    curr_row <- sum(out[j,]) + intercept
+    vals <- c(vals, curr_row)
+    
+  }
+  
+  return(vals)
+}
 
 round_df <- function(df, digits) {
   nums <- vapply(df, is.numeric, FUN.VALUE = logical(1))
@@ -49,33 +77,9 @@ inverse_logit <-function(col){
   return(res_list)
 }
 
-# getStressedVars <- function(base, stress, indeps){
-#   
-#   stressed_vars <- list()
-#   
-#   cols_base <- colnames(base)
-#   cols_stress <- cols_base
-#   cols_indeps <- colnames(indeps)
-#   
-#   comparison <- base == stress
-#   for (j in cols_stress) {
-#     if(!all(comparison[[j]]) && cols_stress[j] %in% cols_indeps){
-#       # if(cols_stress[j] %in% cols_indeps ){
-#         stressed_vars[[j]] <- stress[[cols_stress[j]]]
-#         print(stressed_vars[[j]])
-#       }
-#       else {
-#         next
-#       }
-#       
-#     
-#   }
-#   
-#   return(stressed_vars)
-#   
-# }
 
-run_baseline <- function(inner, outer, dim, start_index, chol, model){
+
+runMonteCarlo <- function(inner, outer, dim, start_index, chol, model, stress_estim = NULL){
   
   baseline <- c()
   for(i in 1:outer){
@@ -84,11 +88,17 @@ run_baseline <- function(inner, outer, dim, start_index, chol, model){
       z_rand <- rnorm(dim)
       curr_estimate <- chol %% z_rand
       curr_single <- curr_estimate[1,1]
-      simulated <- model$fitted[start] + curr_single
+      if(!is.null(stress_estim)){
+        simulated <- stress_estim[start] + curr_single
+      } 
+      else {
+        simulated <- model$fitted[start] + curr_single
+      }
       baseline <- c(baseline, inverse_logit(diffinv(simulated)))
       start = start + 1
     }
   }
   return(as.double(baseline))
 }
+
 
