@@ -82,11 +82,11 @@ shinyUI(
                   
                   box(title = "Histogram", uiOutput("inputwidget_hist"), 
                       sliderInput("bins", "Select number of bins", min = 5, max = 60, value = 8),
-                            plotOutput("histogram", height = 350, width = 500),
+                            plotOutput("histogram", height = 350, width = 450),
                             downloadButton("down_hist", "Download the plot"),
                       solidHeader = T, collapsible = T, status = "primary"),
                   
-                  box(title = "Line chart",uiOutput("inputwidget1_line"), plotOutput("linechart", height = 350, width = 650),
+                  box(title = "Line chart",uiOutput("inputwidget1_line"), plotOutput("linechart", height = "350px"),
                       downloadButton("down_line", "Download the plot"), solidHeader = T, collapsible = T, status = "primary"),
                   
                   box(title = "Scatterplot",uiOutput("inputwidget2_scatter"), plotOutput("scatterplot", height = 350, width = 450),
@@ -121,7 +121,7 @@ shinyUI(
                 fluidRow(
                   box(title = h3("Unit Root Test Options"), uiOutput("unit_vars"), 
                       radioButtons("test", "Select test", 
-                      choices = c("ADF" = "adf", "Phillips Perron" = "pp")),
+                      choices = c("ADF" = "adf", "Phillips Perron" = "pp", "Elliot Rothenberg Stock" = "ers")),
                       uiOutput("test_type"),
                       solidHeader = T, collapsible = T, status = "primary"),
                   box(title = h3("Test Results"), tableOutput("unit_table"), downloadButton("down_unit", "Download the report"),

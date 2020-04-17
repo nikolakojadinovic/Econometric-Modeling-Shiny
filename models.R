@@ -79,13 +79,37 @@ adf_test <- function(data, kind){
   }
 }
 
-
+ers_test <- function(data, kind){
+  
+  data = data.frame(data)
+  
+  if (kind == "drift") {
+    adf_test_results <-c()
+    for (i in 1:ncol(data)) {
+      var <- na.omit(data[,i])
+      current_test <- ur.ers(as.numeric(unlist(var)),type = "DF-GLS", model = "constant")
+      adf_test_results <- c(adf_test_results, current_test)
+    }
+    return(adf_test_results)
+  } else if (kind == "trend") {
+    adf_test_results <- c()
+    for (i in 1:ncol(data)) {
+      var <- na.omit(data[,i])
+      current_test <- ur.ers(as.numeric(unlist(var)), type = "DF-GLS", model = "trend")
+      adf_test_results <- c(adf_test_results, current_test)
+    }
+    return(adf_test_results)
+    
+    
+  } 
+    
+}
 
 generate_output_table <- function(data, test){
 
   #Formating results of PP and ADF test  
   
-  if (test=="pp") {
+  if (test=="pp" || test == "ers") {
     output_table <- data.frame(Variables = character(),
                                No_drift_nor_trend = character(),
                                Drift_no_trend = double(),
@@ -98,8 +122,14 @@ generate_output_table <- function(data, test){
     drift_no_trend <- c()
     drift_and_trend <- c()
     
-    pp_results_d <- phillips_perron_test(data, "drift")
-    pp_results_dt <- phillips_perron_test(data, "trend")
+    if(test == "pp") {
+      pp_results_d <- phillips_perron_test(data, "drift")
+      pp_results_dt <- phillips_perron_test(data, "trend")
+      
+    } else if(test == "ers") {
+      pp_results_d <- ers_test(data,"drift")
+      pp_results_dt <- ers_test(data, "trend")
+    }
     
     
     for (i in 1:ncol(data)) {

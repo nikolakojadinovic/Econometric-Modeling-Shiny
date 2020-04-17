@@ -220,12 +220,18 @@ shinyServer(function(input, output, session){
   
   scatt <- reactive({
     ggplot(data1(), aes(x = unlist(data1()[,req(input$cols2[1])]),
-                        y = unlist(data1()[,req(input$cols2[2])]))) + geom_point() + xlab(input$cols2[1]) + ylab(input$cols2[2])
+                        y = unlist(data1()[,req(input$cols2[2])]))) + geom_point() + xlab(input$cols2[1]) + ylab(input$cols2[2]) + 
+      theme(panel.grid.major = element_line(size = 0.1, linetype = "solid"), 
+            panel.grid.minor = element_blank(),
+            panel.background = element_rect(fill ="lightblue")) 
   })
   
   output$scatterplot <- renderPlot({
     ggplot(data1(), aes(x = unlist(data1()[,req(input$cols2[1])]),
-                        y = unlist(data1()[,req(input$cols2[2])]))) + geom_point() + xlab(input$cols2[1]) + ylab(input$cols2[2])
+                        y = unlist(data1()[,req(input$cols2[2])]))) + geom_point() + xlab(input$cols2[1]) + ylab(input$cols2[2]) + 
+      theme(panel.grid.major = element_line(size = 0.1, linetype = "solid"), 
+            panel.grid.minor = element_blank(),
+            panel.background = element_rect(fill ="lightblue")) 
   })
   
   output$down_scatter <- downloadHandler(
