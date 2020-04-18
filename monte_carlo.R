@@ -79,7 +79,7 @@ inverse_logit <-function(col){
 
 
 
-runMonteCarlo <- function(inner, outer, dim, start_index, chol, model, stress_estim = NULL){
+runMonteCarlo <- function(inner, outer, dim, start_index, chol, model, stress_estim = NULL, revert){
   
   baseline <- c()
   for(i in 1:outer){
@@ -94,11 +94,29 @@ runMonteCarlo <- function(inner, outer, dim, start_index, chol, model, stress_es
       else {
         simulated <- model$fitted[start] + curr_single
       }
-      baseline <- c(baseline, inverse_logit(diffinv(simulated)))
+      
+      
+      
+      baseline <- c(baseline, simulated)
       start = start + 1
     }
   }
-  return(as.double(baseline))
+  
+  if(revert == 1){
+    baseline <- sapply(baseline, inverse_logit)
+    return(as.double(baseline))
+  } else if(revert == 2){
+    baseline <- sapply(baseline, diffinv)
+    return(as.double(baseline))
+  } else if(revert == 3){
+    baseline <- sapply(baseline, diffinv)
+    baseline <- sapply(baseline, inverse_logit)
+    return(as.double(baseline))
+  } else if(revert == 9){
+    return (as.double(baseline))
+  }
+  
+  
 }
 
 

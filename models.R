@@ -558,6 +558,16 @@ getPVals <- function(model_obj){
   
 }
 
+getPValsLin <- function(model_obj){
+  tTable <- summary(model_obj)$coefficients
+  N <- nrow(tTable)
+  coefs <- c()
+  for(i in 1:N){
+    coefs <- c(coefs, tTable[i,4])
+  }
+  return(coefs)
+}
+
 modelFitPrepare <-function(Xset){
   if(is.null(ncol(Xset)) || is.na(ncol(Xset))){
     return(unlist(Xset))

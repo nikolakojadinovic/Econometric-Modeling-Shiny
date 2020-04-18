@@ -56,14 +56,25 @@ shinyServer(function(input, output, session){
   
   
   date_col <- reactive({
-    date_range <- cbind(sapply(seq.Date(from = req(input$startdate),
-                              by = req(input$ts),
-                              length.out = len_data()),as.character.Date))
+    date_range <- data.frame(seq.Date(from = req(input$startdate),
+                                        by = req(input$ts),
+                                        length.out = len_data()))
     
-    colnames(date_range) <- "Date_Index"
+    
+    
+    colnames(date_range) <- "Date Index"
     return(date_range) 
   
     
+  })
+  
+  date_coll <- reactive({
+    date_range <- cbind(sapply(seq.Date(from = req(input$startdate),
+                                        by = req(input$ts),
+                                        length.out = len_data()),as.character.Date))
+    
+    colnames(date_range) <- "Date_Index"
+    return(date_range) 
   })
   
   first_year <- reactive({
@@ -180,7 +191,7 @@ shinyServer(function(input, output, session){
   
   data_line_plot <- reactive({
     
-    plotLineDfFormatter(old_and_transformed(), req(input$cols1))
+    cbind(date_col(),plotLineDfFormatter(old_and_transformed(), req(input$cols1)))
     
   })
   
@@ -188,16 +199,19 @@ shinyServer(function(input, output, session){
     data_line_plot()
   })
   
-  linech <- reactive({
-    ggplot(data_line_plot(), aes_string(x =  unlist(data_line_plot()[,1]),
-                                        y = unlist(data_line_plot()[,3]),
-                                        col = unlist(data_line_plot()[,2]))) + 
-      geom_line(size = 1) + 
-      theme(panel.grid.major = element_line(size = 0.1, linetype = "solid"), 
-            panel.grid.minor = element_blank(),
-            panel.background = element_rect(fill ="lightblue")) 
+  
+    linech <- reactive({
+      ggplot(data_line_plot(), aes_string(x =  unlist(data_line_plot()[,1]),
+                                          y = unlist(data_line_plot()[,4]),
+                                          col = unlist(data_line_plot()[,3]))) + 
+        geom_line(size = 1) + 
+        theme(panel.grid.major = element_line(size = 0.1, linetype = "solid"), 
+              panel.grid.minor = element_blank(),
+              panel.background = element_rect(fill ="lightblue")) 
       
-  })
+    })
+      
+  
   
   output$linechart <- renderPlot({
     # ggplot(data_line_plot(), aes_string(x = unlist(data_line_plot()[,1]),
@@ -457,7 +471,7 @@ columns_final <- reactive({
 columns_plot_final <- reactive({
   names(getNumeric(old_and_transformed()))
 })
-output$transformed <- renderTable({
+output$transformed <- renderDataTable({
   cbind(logit_cols(), z_cols(), ln_cols(), diff1_cols(), diff2_cols(), lag1_cols(), lag2_cols(), ld1_cols(), ld2_cols())
   
 })
@@ -491,10 +505,12 @@ unit_vars_df <- reactive({
 })
 
 unitt <- function(){
+  
   data.frame(generate_output_table(unit_vars_df(),test = req(input$test)))
 }
 output$unit_table <- renderTable({
-  unitt()
+  input$unit_action
+  isolate(unitt())
 })
 
 output$down_unit <- downloadHandler(
@@ -669,6 +685,107 @@ output$sur_x_out <- renderTable({
 
 ################################################# OLS MODELS
 
+
+output$linreg_y <- renderUI({
+  
+  if ((is.null(input$cols_logit) && is.null(input$cols_zscore) && is.null(input$cols_ln) && 
+       is.null(input$cols_1diff) && is.null(input$cols_2diff) && is.null(input$cols_1lag) && is.null(input$cols_2lag)) ||
+      ("None" %in% input$cols_logit && "None" %in% input$cols_zscore && "None" %in% input$cols_ln 
+       && "None" %in% input$cols_1diff && "None" %in% input$cols_2diff 
+       && "None" %in% input$cols_1lag && "None" %in% input$cols_2lag)){
+    selectInput("y_lin", "Select dependent variable", choices = columns_numerical())
+  } else {
+    selectInput("y_lin", "Select dependent variable", choices = columns_final())
+  }
+  
+})
+
+output$linreg_x <- renderUI({
+  
+  if ((is.null(input$cols_logit) && is.null(input$cols_zscore) && is.null(input$cols_ln) && 
+       is.null(input$cols_1diff) && is.null(input$cols_2diff) && is.null(input$cols_1lag) && is.null(input$cols_2lag)) ||
+      ("None" %in% input$cols_logit && "None" %in% input$cols_zscore && "None" %in% input$cols_ln 
+       && "None" %in% input$cols_1diff && "None" %in% input$cols_2diff 
+       && "None" %in% input$cols_1lag && "None" %in% input$cols_2lag)){
+    selectInput("x_lin", "Select independent variables", choices = columns_numerical(), multiple = TRUE)
+  } else {
+    selectInput("x_lin", "Select independent variables", choices = columns_final(), multiple = TRUE)
+  }
+})
+
+
+
+dep_lin <- reactive({
+  old_and_transformed()[,req(input$y_lin)]
+})
+
+indeps_lin <- reactive({
+  old_and_transformed()[as.character(req(input$x_lin))]
+})
+
+reg_model <- reactive({
+  lm(dep_lin() ~ modelFitPrepare(indeps_lin()))
+})
+
+coefs_lin <- reactive({
+  as.double(reg_model()$coefficients)
+})
+
+r2_main_lin <- reactive({
+  getR2(dep_lin(), reg_model()$fitted)
+})
+
+first_row_out_lin <- reactive({
+  c(as.character(input$y_lin), "Intercept", as.character(input$x_lin),  "R Squared")
+})
+
+second_row_out_lin <- reactive({
+  c("coefs: ", sapply(coefs_lin(), round, digits = 4), r2_main_lin())
+})
+
+third_row_out_lin <- reactive({
+  c("p-value:", sapply(getPValsLin(reg_model()), round, digits = 4), "-")
+})
+
+df_out_lin <- reactive({
+  df <- rbind(second_row_out_lin(), third_row_out_lin())
+  colnames(df) <- first_row_out_lin()
+  return(df)
+})
+
+
+output$linreg_results <- renderTable({
+  input$lin
+  
+  isolate(df_out_lin())
+})
+
+plot_lin <- reactive({
+  df <- data.frame(date_col(), dep_lin(), reg_model()$fitted)
+  colnames(df) <- c("Date","Actual", "Fitted")
+  return(df)
+})
+
+output$lele <- renderText({
+  class(date_col()[5])
+})
+
+
+
+fit_plot <- reactive({
+  ggplot(plot_lin()) + geom_line(aes(x = Date, y = Actual, colour = "Actual")) + geom_line(aes(x=Date, y = Fitted, color = "Fitted")) + 
+    theme(panel.grid.major = element_line(size = 0.1, linetype = "solid"), 
+          panel.grid.minor = element_blank(),
+          panel.background = element_rect(fill ="lightblue")) + 
+    scale_color_manual(values = c(Actual = "blue",
+                                 Fitted = "red")) 
+})
+
+output$fit_viz <- renderPlot({
+  input$lin
+  
+  isolate(fit_plot())
+})
 ################################################# OLS MODELS
 
 ################################################# MONTE CARLO 
@@ -741,15 +858,15 @@ output$promena <- renderTable({
 
 output$startY <- renderUI({
   selectInput("starty", "Select start date for the simulation horizon",
-              choices = date_col())
+              choices = date_coll())
 })
 
 remain_index <- reactive({
-  which(date_col() == as.character(req(input$starty)))
+  which(date_coll() == as.character(req(input$starty)))
 })
 
 endy_choices <- reactive({
-  date_col()[(remain_index()+1):length(date_col())]
+  date_coll()[(remain_index()+1):length(date_coll())]
 })
 
 output$endY <- renderUI({
@@ -758,7 +875,7 @@ output$endY <- renderUI({
 })
 
 endy_index <- reactive({
-  which(date_col() == as.character(req(input$endy)))
+  which(date_coll() == as.character(req(input$endy)))
 })
 
 
@@ -819,7 +936,8 @@ mc_results <- reactive({
                          dim =  rnorm_len(),
                          start_index = remain_index(),
                          chol = cholesky_base(),
-                         model = model2())
+                         model = model2(),
+                         revert = as.integer(req(input$revert)))
   
   values_stressed <- runMonteCarlo(inner = inner_loop_end(),
                                     outer = outer_loop_end(),
@@ -827,7 +945,8 @@ mc_results <- reactive({
                                     start_index = remain_index(),
                                     chol = cholesky_base(),
                                     model = model2(),
-                                    stress_estim = stressed_estimates())
+                                    stress_estim = stressed_estimates(), 
+                                    revert = as.integer(req(input$revert)))
   
   
   df <- data.frame(cbind(values_baseline, values_stressed))
@@ -841,16 +960,39 @@ output$melt_mc <- renderTable({
 })
 
 
-output$monte_carlo_histogram <- renderPlot({
-  ggplot(mc_results()) + geom_histogram(aes(x = baseline), alpha = 0.3, color = "green", bins = 80) + 
-    geom_histogram(aes(x = stressed), alpha = 0.3, bins = 80) +
+mc_hist <- reactive({
+  ggplot(mc_results()) + geom_histogram(aes(x = baseline, fill = "baseline"), alpha = 0.3, color = "blue", bins = 100) + 
+    geom_histogram(aes(x = stressed, fill = "stressed"), alpha = 0.6, bins = 100, color = "blue") +
     scale_y_continuous(limits = c(0, max(mc_results()[,1]) + 500)) +
-    scale_fill_identity(name = "Variables", guide = "legend", labels = c("baseline", "stressed"))
+    scale_fill_manual(values = c(baseline = "green",
+                                 stressed = "red")) + 
+    theme(panel.grid.major = element_line(size = 0.1, linetype = "solid"), 
+          panel.grid.minor = element_blank(),
+          panel.background = element_rect(fill ="lightblue")) + xlab("Baseline and stressed simulated values")
+})
+
+
+output$monte_carlo_histogram <- renderPlot({
+  
+  input$runmc
+  
+  isolate(mc_hist())
   
 })
 
-output$proba <- renderTable({
-  stressed()
+output$down_mchist <- downloadHandler(
+  filename = function(){
+    paste("Monte_Carlo_NPL_Simulation", as.character(Sys.Date()), ".png", sep = "_")
+  },
+  content = function(file){
+    png(file)
+    print(mchist())
+    dev.off()
+  }
+)
+
+output$proba <- renderPrint({
+  typeof(input$rev_diff)
 })
 
 ###################### ACTUAL MONTE CARLO SIMULATION
@@ -860,13 +1002,6 @@ output$proba <- renderTable({
 
 ##################################################################### DATA MODELING OUTPUT
 
-  
-  
-  
-
-  
-  
-  
 })  
   
   

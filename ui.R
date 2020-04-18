@@ -58,10 +58,7 @@ shinyUI(
                  menuSubItem("Unit Root Test", tabName = "unit"),
                  menuSubItem("OLS Linear Regression", tabName = "linreg"),
                  menuSubItem("SUR Models", tabName = "sur" )),
-        menuItem("Monte Carlo Simulation", tabName = "mc", icon = icon("infinity")),
-        
-        menuItem("About", tabName = "about",icon = icon("clipboard")),
-        menuItem("TEST", tabName = "TEST")
+        menuItem("Monte Carlo Simulation", tabName = "mc", icon = icon("infinity"))
         
         
         
@@ -113,7 +110,7 @@ shinyUI(
                 
                   
          
-         box(title = "Results", style = 'overflow-x: scroll', tableOutput("transformed"), solidHeader = T, collapsible = T, status = "primary")
+         box(title = "Results", div(style = 'overflow-x: scroll', dataTableOutput("transformed")), solidHeader = T, collapsible = T, status = "primary")
          )),
         
         
@@ -123,10 +120,22 @@ shinyUI(
                       radioButtons("test", "Select test", 
                       choices = c("ADF" = "adf", "Phillips Perron" = "pp", "Elliot Rothenberg Stock" = "ers")),
                       uiOutput("test_type"),
+                      actionButton("unit_action", "Perform Test"),
                       solidHeader = T, collapsible = T, status = "primary"),
                   box(title = h3("Test Results"), tableOutput("unit_table"), downloadButton("down_unit", "Download the report"),
                       solidHeader = T, collapsible = T, status = "primary")
                 )),
+        tabItem(tabName = "linreg",
+                fluidRow(
+                  box(title = h3("Model Specification"),
+                      uiOutput("linreg_y"),
+                      uiOutput("linreg_x"),
+                      actionButton("lin", "Estimate the model!"), collapsible = T, status = "primary", solidHeader = T),
+                  box(title = h3("Estimation Results"), collapsible = T, status = "primary", solidHeader = T, helpText("Model summary"),
+                      tableOutput("linreg_results")),
+                  box(title = h3("Visualized Fit"), plotOutput("fit_viz"), collapsible = T, status = "primary", solidHeader = T)
+                  
+                  )),
         
         tabItem(tabName = "sur",
                 fluidRow(
@@ -157,7 +166,8 @@ shinyUI(
                                                         "10000" = 10000
                                                         )),
                           
-                               checkboxInput("reverse", "Revert transformations"),
+                               radioButtons("revert", "Revert transformations for simulated variable",
+                                            choices = c("None" = 9, "Logit" = 1, "1st Difference" = 2, "Logit 1st Difference" = 3)),
                                uiOutput("startY"),
                                uiOutput("endY"),
                                helpText("Revert transformation if your dependent variable in SUR model was previously transformed.
@@ -167,13 +177,7 @@ shinyUI(
                   
                   
                 ),
-                box(h3("Monte Carlo Simulation Results"), plotOutput("monte_carlo_histogram"),solidHeader = T, collapsible = T, status = "primary", background = "navy"))),
-        
-        
-        
-        
-        tabItem(tabName = "about", tableOutput("melt_mc")),
-        tabItem(tabName = "TEST", tableOutput("proba"))
+                box(h3("Monte Carlo Simulation Results"), plotOutput("monte_carlo_histogram"), solidHeader = T, collapsible = T, status = "primary", downloadButton("down_mchist"))))
         
         
 
